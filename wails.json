@@ -13,16 +13,7 @@
   "info": {
     "companyName": "yuerei",
     "productName": "LumInstaller",
-    "productVersion": "0.1.0",
+    "productVersion": "0.2.0",
     "copyright": "Copyright 2026"
-  },
-  "windows": {
-    "certificate": {
-      "thumbprint": "8AFBB6EFB1ED18ACC8456C1DC1076A5234BDE183",
-      "digest": "sha256"
-    },
-    "wscript": {
-      "requestedExecutionLevel": "requireAdministrator"
-    }
   }
 }

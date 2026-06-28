@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,62 +12,65 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"golang.org/x/sys/windows"
 )
 
+type AppConfig struct { SteamPath string `json:"steamPath"` }
 type App struct { ctx context.Context }
 
 func NewApp() *App                         { return &App{} }
-func (a *App) startup(ctx context.Context) { 
-	a.ctx = ctx 
-	if !a.IsAdmin() {
-		_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
-			Type:          runtime.ErrorDialog,
-			Title:         "Permissions Required",
-			Message:       "LumInstaller requires Administrator privileges to manage folder exclusions and system bindings.\n\nPlease right-click the application and select 'Run as administrator'.",
-		})
-		runtime.Quit(ctx)
-	}
+func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+
+func (a *App) getConfigPath() string {
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData == "" { localAppData = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local") }
+	return filepath.Join(localAppData, "LumInstaller", "config.json")
 }
 
-func (a *App) IsAdmin() bool {
-    var sid *windows.SID
+func (a *App) GetDefaultSteamPath() string { return "C:\\Program Files (x86)\\Steam" }
 
-    err := windows.AllocateAndInitializeSid(
-        &windows.SECURITY_NT_AUTHORITY,
-        2,
-        windows.SECURITY_BUILTIN_DOMAIN_RID,
-        windows.DOMAIN_ALIAS_RID_ADMINS,
-        0, 0, 0, 0, 0, 0,
-        &sid,
-    )
-    if err != nil {
-        return false
-    }
-    defer windows.FreeSid(sid)
+func (a *App) LoadConfig() string {
+	configPath := a.getConfigPath()
+	
+	if _, err := os.Stat(configPath); os.IsNotExist(err) { return a.GetDefaultSteamPath() }
 
-    token := windows.Token(0)
-    member, err := token.IsMember(sid)
-    if err != nil {
-        return false
-    }
+	file, err := os.ReadFile(configPath)
+	if err != nil { return a.GetDefaultSteamPath() }
 
-    return member
+	var config AppConfig
+	if err := json.Unmarshal(file, &config); err != nil { return a.GetDefaultSteamPath() }
+
+	if strings.TrimSpace(config.SteamPath) == "" { return a.GetDefaultSteamPath() }
+
+	return config.SteamPath
+}
+
+func (a *App) SaveConfig(path string) error {
+	configPath := a.getConfigPath()
+	configDir := filepath.Dir(configPath)
+
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	config := AppConfig{SteamPath: path}
+	file, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to parse configuration schema: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, file, 0644); err != nil {
+		return fmt.Errorf("failed to save configuration parameters: %w", err)
+	}
+
+	return nil
 }
 
 func (a *App) CheckFile(path string) bool {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) { return false }
 	return !info.IsDir()
-}
-
-func (a *App) CheckFolder(path string) bool {
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) { return false }
-	return info.IsDir()
 }
 
 func (a *App) ForceClose(app string) error {
@@ -89,39 +93,7 @@ func (a *App) SelectDirectory(text string) (string, error) {
 	return selectedDir, nil
 }
 
-func (a *App) AddDefenderExclusion(targetPath string) error {
-	tmpBatPath := filepath.Join(os.TempDir(), "set_exclusion.bat")
-
-	batContent := fmt.Sprintf(`@echo off
-powershell -Command "Add-MpPreference -ExclusionPath '%s'" > nul 2>&1
-exit /b
-`, targetPath)
-
-	err := os.WriteFile(tmpBatPath, []byte(batContent), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to create temporary exclusion script: %w", err)
-	}
-	defer os.Remove(tmpBatPath)
-
-	cmd := exec.Command("cmd", "/c", tmpBatPath)
-	
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to execute exclusion script (Make sure app is running as Admin): %w", err)
-	}
-
-	return nil
-}
-
 func (a *App) Install(link string, name string, dest string) error {
-	cleanDest := filepath.Clean(dest)
-
-	if err := a.AddDefenderExclusion(cleanDest); err != nil {
-		fmt.Printf("Defender tracking notification notice: %v\n", err)
-	}
-
 	downloadURL := link
 	tmpZipPath := filepath.Join(os.TempDir(), name + ".zip")
 
@@ -150,6 +122,7 @@ func (a *App) Install(link string, name string, dest string) error {
 	if err != nil { return fmt.Errorf("failed to open zip archive: %w", err) }
 	defer archive.Close()
 
+	cleanDest := filepath.Clean(dest)
 	for _, file := range archive.File {
 		filePath := filepath.Join(cleanDest, file.Name)
 
