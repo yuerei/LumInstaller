@@ -1,19 +1,59 @@
-# README
+# LumInstaller 🚀
 
-## About
+LumInstaller is a lightweight, high-performance desktop auto-installer utility built with **Go (Wails v2)** and **React (TypeScript)**. It features a sleek, non-resizable glassmorphic dashboard interface, smooth slide transitions, and robust automated directory management safely optimized for Windows environments.
 
-This is the official Wails React-TS template.
+## ✨ Features
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+- **Fluid Interface:** Sleek, modern custom UI built with modern React state animations and a clean radial background framework.
+- **Safe Directory Operations:** Integrated system path validation checks, force-closing routines to prevent file-locking conflicts, and path traversal (**Zip Slip**) security guards.
 
-## Live Development
+---
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## 🛠️ Tech Stack
 
-## Building
+- **Backend:** Go v1.21+ (Wails v2 framework)
+- **Frontend:** React v18+, TypeScript
 
-To build a redistributable, production mode package, use `wails build`.
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Ensure you have the following dependencies installed on your development machine:
+- [Go](https://go.dev/doc/install) (v1.21 or newer)
+- [Node.js](https://nodejs.org/) (v22 LTS recommended)
+- [Wails CLI](https://wails.io/docs/gettingstarted/installation) (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
+
+### Local Development
+
+1. Clone the repository to your machine:
+   ```bash
+   git clone https://github.com/yuerei/LumInstaller.git
+   cd LumInstaller
+   ```
+
+2. Run the application in hot-reload development mode:
+   ```bash
+   wails dev
+   ```
+
+### Production Build
+
+To clear the internal cache and compile a pristine, optimized Windows executable locally, run:
+
+```bash
+wails build -clean
+
+```
+
+The final binary will be generated under the `build/bin/` directory.
+
+---
+
+## 👤 Author
+
+* **Eve** - [@yuerei](https://github.com/yuerei)
+* **Website:** [eve.is-a.dev](https://eve.is-a.dev)
+
+Copyright © 2026
