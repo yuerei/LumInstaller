@@ -1,4 +1,4 @@
-import { CheckFile, CheckFolder, ForceClose, Install, Execute, RenameFile, DeleteFile, LaunchAndExit } from "../wailsjs/go/main/App";
+import { CheckFile, CheckFolder, ForceClose, SelectDirectory, Install, Execute, RenameFile, DeleteFile, LaunchAndExit } from "../wailsjs/go/main/App";
 import { useState, useEffect } from 'react';
 import './App.css';
 
@@ -10,7 +10,7 @@ function App() {
     const [installStatus, setInstallStatus] = useState<string>('Ready');
     const [isInstalling, setIsInstalling] = useState<boolean>(false);
 
-    const steamPath = "C:\\Program Files (x86)\\Steam";
+    const [steamPath, setSteamPath] = useState<string>("C:\\Program Files (x86)\\Steam");
     const managerPath = "C:\\Program Files (x86)\\Steam\\user32.dll";
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -22,20 +22,34 @@ function App() {
         setIsNavigating(false);
     };
 
-    const verifySteamPath = async () => {
-        const exists = await CheckFolder(steamPath);
+    const verifySteamPath = async (pathToCheck: string = steamPath) => {
+        const exists = await CheckFolder(pathToCheck);
         setSteamExists(exists ? 'Found' : 'Missing Steam');
+        return exists;
     };
 
-    const verifyManagerPath = async () => {
-        const exists = await CheckFile(managerPath);
+    const verifyManagerPath = async (pathToCheck: string = steamPath) => {
+        const targetFile = `${pathToCheck}\\user32.dll`;
+        const exists = await CheckFile(targetFile);
         setManagerExists(exists ? 'Active' : 'Not Installed');
     };
 
-    const handleRefresh = async () => {
+    const handleRefresh = async (pathToCheck: string = steamPath) => {
         setSteamExists('Checking...');
         setManagerExists('Checking...');
-        await Promise.all([verifySteamPath(), verifyManagerPath()]);
+        await Promise.all([verifySteamPath(pathToCheck), verifyManagerPath(pathToCheck)]);
+    };
+
+    const selectCustomSteamFolder = async () => {
+        try {
+            const result = await SelectDirectory("Select your Steam folder");
+            if (result && result.trim() !== "") {
+                setSteamPath(result);
+                await handleRefresh(result);
+            }
+        } catch (err) {
+            alert(`Error choosing directory: ${err}`);
+        }
     };
 
     useEffect(() => {
@@ -109,6 +123,13 @@ function App() {
                     </div>
                     
                     <div className="status-container">
+                        <div className="status-row path-selector-row" onClick={selectCustomSteamFolder} title="Click to select a custom Steam folder location">
+                            <div className="path-text-wrapper">
+                                <span className="label">Steam Target Directory</span>
+                                <span className="path-subtext">{steamPath}</span>
+                            </div>
+                            <span className="badge badge-change">Edit</span>
+                        </div>
                         <div className="status-row">
                             <span className="label">Steam Platform</span>
                             <span className={`badge ${isSteamFound ? 'badge-success' : 'badge-danger'}`}>
@@ -130,7 +151,7 @@ function App() {
                             </button>
                         ) : (
                             <>
-                                <button onClick={handleRefresh} className="btn-accent" disabled={steamExists === 'Checking...'}>
+                                <button onClick={() => handleRefresh(steamPath)} className="btn-accent" disabled={steamExists === 'Checking...'}>
                                     Scan System Env
                                 </button>
                                 {isSteamFound && !isManagerFound && (
@@ -199,3 +220,7 @@ function App() {
 }
 
 export default App;
+
+function SelectFolder() {
+    throw new Error("Function not implemented.");
+}

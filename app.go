@@ -38,6 +38,20 @@ func (a *App) ForceClose(app string) error {
 	return nil
 }
 
+func (a *App) SelectDirectory(text string) (string, error) {
+	options := runtime.OpenDialogOptions{
+		DefaultDirectory: "C:\\",
+		Title:            text,
+	}
+
+	selectedDir, err := runtime.OpenDirectoryDialog(a.ctx, options)
+	if (err != nil) {
+		return "", fmt.Errorf("failed to open directory dialog: %w", err)
+	}
+
+	return selectedDir, nil
+}
+
 func (a *App) Install(link string, name string, dest string) error {
 	downloadURL := link
 	tmpZipPath := filepath.Join(os.TempDir(), name + ".zip")
