@@ -4,6 +4,7 @@ import './App.css';
 
 function App() {
     const [page, setPage] = useState<number>(1);
+    const [isNavigating, setIsNavigating] = useState<boolean>(false);
     const [steamExists, setSteamExists] = useState<string>('Checking...');
     const [managerExists, setManagerExists] = useState<string>('Checking...');
     const [installStatus, setInstallStatus] = useState<string>('Ready');
@@ -13,6 +14,13 @@ function App() {
     const managerPath = "C:\\Program Files (x86)\\Steam\\user32.dll";
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const navigateToPage = async (targetPage: number) => {
+        setIsNavigating(true);
+        await delay(200);
+        setPage(targetPage);
+        setIsNavigating(false);
+    };
 
     const verifySteamPath = async () => {
         const exists = await CheckFolder(steamPath);
@@ -43,7 +51,7 @@ function App() {
             await delay(1000);
             
             setInstallStatus('Downloading assets...');
-            await Install("https://eohrccijhquemsmvxazj.supabase.co/storage/v1/object/public/Install/Manager.zip", "luma", steamPath);
+            await Install("https://github.com/yuerei/LumInstaller/releases/download/v0.1.0/Luma.zip", "luma", steamPath);
             await delay(800);
             
             setInstallStatus('Flushing app cache blocks...');
@@ -86,11 +94,13 @@ function App() {
     const isManagerFound = managerExists === 'Active';
     const isEverythingReady = isSteamFound && isManagerFound;
 
+    const transitionClass = isNavigating ? 'fade-out' : 'fade-in';
+
     return (
         <div id="app">
             {/* PAGE 1: DASHBOARD */}
             {page === 1 && (
-                <div className="status-card fade-in">
+                <div className={`status-card ${transitionClass}`}>
                     <div className="card-header">
                         <div className={`status-indicator-dot ${isEverythingReady ? 'dot-success' : 'dot-warning'}`}></div>
                         <h2 className="card-title">
@@ -124,7 +134,7 @@ function App() {
                                     Scan System Env
                                 </button>
                                 {isSteamFound && !isManagerFound && (
-                                    <button onClick={() => setPage(2)} className="btn-primary">
+                                    <button onClick={() => navigateToPage(2)} className="btn-primary">
                                         Deploy Manager Hook →
                                     </button>
                                 )}
@@ -136,7 +146,7 @@ function App() {
 
             {/* PAGE 2: DEPLOYMENT PROFILE OVERVIEW */}
             {page === 2 && (
-                <div className="status-card fade-in">
+                <div className={`status-card ${transitionClass}`}>
                     <h2 className="card-title">Deployment Overview</h2>
                     <br />
                     <p className="card-description">
@@ -144,10 +154,10 @@ function App() {
                     </p>
                     
                     <div className="action-row horizontal">
-                        <button onClick={() => setPage(1)} className="btn-accent">
+                        <button onClick={() => navigateToPage(1)} className="btn-accent">
                             ← Back
                         </button>
-                        <button className="btn-primary" onClick={() => setPage(3)}>
+                        <button className="btn-primary" onClick={() => navigateToPage(3)}>
                             Initialize Setup
                         </button>
                     </div>
@@ -156,7 +166,7 @@ function App() {
 
             {/* PAGE 3: RUNTIME SAFETY EXECUTOR */}
             {page === 3 && (
-                <div className="status-card warning-border fade-in">
+                <div className={`status-card warning-border ${transitionClass}`}>
                     <h2 className="card-title warning-text">⚠️ Application Conflict Check</h2>
                     <br />
                     <p className="card-description">
@@ -171,7 +181,7 @@ function App() {
                     )}
                     
                     <div className="action-row horizontal">
-                        <button onClick={() => setPage(2)} className="btn-accent" disabled={isInstalling}>
+                        <button onClick={() => navigateToPage(2)} className="btn-accent" disabled={isInstalling}>
                             Abort
                         </button>
                         <button 
