@@ -116,6 +116,7 @@
 .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 .badge-warning { background: rgba(234, 179, 8, 0.15); color: #facc15; }
 .badge-muted { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+.badge-refreshing { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
 
 /* Status Dot Component Indicator */
 .status-indicator-dot {

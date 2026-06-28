@@ -1,60 +1,74 @@
-import { CheckFile, CheckFolder, ForceClose, SelectDirectory, Install, Execute, RenameFile, DeleteFile, LaunchAndExit } from "../wailsjs/go/main/App";
+import { CheckFile, ForceClose, SelectDirectory, Install, Execute, RenameFile, DeleteFile, LaunchAndExit, SaveConfig, LoadConfig } from "../wailsjs/go/main/App";
 import { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
     const [page, setPage] = useState<number>(1);
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
     const [steamExists, setSteamExists] = useState<string>('Checking...');
-    const [managerExists, setManagerExists] = useState<string>('Checking...');
+    const [lumaExists, setLumaExists] = useState<string>('Checking...');
+
     const [installStatus, setInstallStatus] = useState<string>('Ready');
     const [isInstalling, setIsInstalling] = useState<boolean>(false);
 
-    const [steamPath, setSteamPath] = useState<string>("C:\\Program Files (x86)\\Steam");
-    const managerPath = "C:\\Program Files (x86)\\Steam\\user32.dll";
+    const [steamPath, setSteamPath] = useState<string>("");
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    const navigateToPage = async (targetPage: number) => {
+    const navigateToPage = async (_target: number) => {
         setIsNavigating(true);
         await delay(200);
-        setPage(targetPage);
+        setPage(_target);
         setIsNavigating(false);
     };
 
-    const verifySteamPath = async (pathToCheck: string = steamPath) => {
-        const exists = await CheckFolder(pathToCheck);
-        setSteamExists(exists ? 'Found' : 'Missing Steam');
+    const verifySteam = async (_path: string = steamPath) => {
+        if (!_path) return false;
+        const targetFile = `${_path}\\steam.exe`;
+        const exists = await CheckFile(targetFile);
+        setSteamExists(exists ? 'Found' : 'Missing');
+        return exists;
+    }
+
+    const verifyLuma = async (_path: string = steamPath) => {
+        if (!_path) return false;
+        const targetFile = `${_path}\\user32.dll`;
+        const exists = await CheckFile(targetFile);
+        setLumaExists(exists ? 'Active' : 'Not Installed');
         return exists;
     };
 
-    const verifyManagerPath = async (pathToCheck: string = steamPath) => {
-        const targetFile = `${pathToCheck}\\user32.dll`;
-        const exists = await CheckFile(targetFile);
-        setManagerExists(exists ? 'Active' : 'Not Installed');
-    };
-
-    const handleRefresh = async (pathToCheck: string = steamPath) => {
+    const handleRefresh = async (_path: string = steamPath) => {
+        if (!_path) return;
+        setIsRefreshing(true);
         setSteamExists('Checking...');
-        setManagerExists('Checking...');
-        await Promise.all([verifySteamPath(pathToCheck), verifyManagerPath(pathToCheck)]);
+        setLumaExists('Checking...');
+        await delay(500);
+        await Promise.all([verifySteam(_path), verifyLuma(_path)]);
+        setIsRefreshing(false);
     };
 
-    const selectCustomSteamFolder = async () => {
+    const selectFolder = async () => {
         try {
             const result = await SelectDirectory("Select your Steam folder");
             if (result && result.trim() !== "") {
                 setSteamPath(result);
+                await SaveConfig(result);
                 await handleRefresh(result);
             }
-        } catch (err) {
-            alert(`Error choosing directory: ${err}`);
-        }
+        } catch (err) { alert(`Error choosing directory: ${err}`) }
     };
 
     useEffect(() => {
-        verifySteamPath();
-        verifyManagerPath();
+        const initializeConfigAndPaths = async () => {
+            const savedPath = await LoadConfig();
+            setSteamPath(savedPath);
+            await Promise.all([verifySteam(savedPath), verifyLuma(savedPath)]);
+        };
+        
+        initializeConfigAndPaths();
     }, []);
 
     const handleInstall = async () => {
@@ -69,18 +83,18 @@ function App() {
             await delay(800);
             
             setInstallStatus('Flushing app cache blocks...');
-            const managerExePath = `${steamPath}\\DeleteSteamAppCache.exe`;
-            await Execute(managerExePath);
+            const _lumaExePath = `${steamPath}\\DeleteSteamAppCache.exe`;
+            await Execute(_lumaExePath);
             await delay(800);
 
             setInstallStatus('Configuring system bindings...');
-            const oldExePath = `${steamPath}\\user32SF.dll`;
-            const newExePath = managerPath;
-            await RenameFile(oldExePath, newExePath);
+            const _lumaPatchPathOld = `${steamPath}\\user32SF.dll`;
+            const _lumaPatchPath = `${steamPath}\\user32.dll`;
+            await RenameFile(_lumaPatchPathOld, _lumaPatchPath);
             await delay(800);
 
             setInstallStatus('Cleaning up temporary tools...');
-            await DeleteFile(managerExePath);
+            await DeleteFile(_lumaExePath);
             await delay(500);
 
             setInstallStatus('✨ Installation Complete!');            
@@ -97,19 +111,15 @@ function App() {
     };
 
     const handleLaunchAndClose = async () => {
-        try {
-            await LaunchAndExit(steamPath + "\\steam.exe");
-        } catch (err) {
-            alert(`Could not launch Steam automatically: ${err}`);
-        }
+        try { await LaunchAndExit(steamPath + "\\steam.exe"); }
+        catch (err) { alert(`Could not launch Steam automatically: ${err}`); }
     };
 
     const isSteamFound = steamExists === 'Found';
-    const isManagerFound = managerExists === 'Active';
-    const isEverythingReady = isSteamFound && isManagerFound;
+    const isLumaFound = lumaExists === 'Active';
+    const isEverythingReady = isSteamFound && isLumaFound;
 
     const transitionClass = isNavigating ? 'fade-out' : 'fade-in';
-
     return (
         <div id="app">
             {/* PAGE 1: DASHBOARD */}
@@ -118,12 +128,12 @@ function App() {
                     <div className="card-header">
                         <div className={`status-indicator-dot ${isEverythingReady ? 'dot-success' : 'dot-warning'}`}></div>
                         <h2 className="card-title">
-                            {isEverythingReady ? "System Ready" : "System Guard"}
+                            {isEverythingReady ? "Luma Ready" : "Luma Not Installed"}
                         </h2>
                     </div>
                     
                     <div className="status-container">
-                        <div className="status-row path-selector-row" onClick={selectCustomSteamFolder} title="Click to select a custom Steam folder location">
+                        <div className="status-row path-selector-row" onClick={selectFolder} title="Click to select a custom Steam folder location">
                             <div className="path-text-wrapper">
                                 <span className="label">Steam Target Directory</span>
                                 <span className="path-subtext">{steamPath}</span>
@@ -132,14 +142,14 @@ function App() {
                         </div>
                         <div className="status-row">
                             <span className="label">Steam Platform</span>
-                            <span className={`badge ${isSteamFound ? 'badge-success' : 'badge-danger'}`}>
+                            <span className={`badge ${isRefreshing ? 'badge-refreshing' : isSteamFound ? 'badge-success' : 'badge-danger'}`}>
                                 {steamExists}
                             </span>
                         </div>
                         <div className="status-row">
                             <span className="label">GreenLuma Hook</span>
-                            <span className={`badge ${isManagerFound ? 'badge-success' : 'badge-muted'}`}>
-                                {managerExists}
+                            <span className={`badge ${isRefreshing ? 'badge-refreshing' : isLumaFound ? 'badge-success' : 'badge-muted'}`}>
+                                {lumaExists}
                             </span>
                         </div>
                     </div>
@@ -147,16 +157,16 @@ function App() {
                     <div className="action-row">
                         {isEverythingReady ? (
                             <button onClick={handleLaunchAndClose} className="btn-success">
-                                Launch Steam Platform
+                                Launch Steam →
                             </button>
                         ) : (
                             <>
-                                <button onClick={() => handleRefresh(steamPath)} className="btn-accent" disabled={steamExists === 'Checking...'}>
-                                    Scan System Env
+                                <button onClick={() => handleRefresh(steamPath)} className="btn-accent" disabled={isRefreshing}>
+                                    Refresh Status
                                 </button>
-                                {isSteamFound && !isManagerFound && (
+                                {isSteamFound && !isLumaFound && (
                                     <button onClick={() => navigateToPage(2)} className="btn-primary">
-                                        Deploy Manager Hook →
+                                        Install Luma →
                                     </button>
                                 )}
                             </>
@@ -168,10 +178,10 @@ function App() {
             {/* PAGE 2: DEPLOYMENT PROFILE OVERVIEW */}
             {page === 2 && (
                 <div className={`status-card ${transitionClass}`}>
-                    <h2 className="card-title">Deployment Overview</h2>
+                    <h2 className="card-title">Installation Overview</h2>
                     <br />
                     <p className="card-description">
-                        Target path verified. The framework will integrate custom dependency hooks directly into your application directory variables.
+                        Steam path verified. The installer will start installing the Luma hook into your Steam installation. Please ensure that Steam is closed before proceeding to avoid any file conflicts.
                     </p>
                     
                     <div className="action-row horizontal">
@@ -179,7 +189,7 @@ function App() {
                             ← Back
                         </button>
                         <button className="btn-primary" onClick={() => navigateToPage(3)}>
-                            Initialize Setup
+                            Install Luma →
                         </button>
                     </div>
                 </div>
@@ -188,7 +198,7 @@ function App() {
             {/* PAGE 3: RUNTIME SAFETY EXECUTOR */}
             {page === 3 && (
                 <div className={`status-card warning-border ${transitionClass}`}>
-                    <h2 className="card-title warning-text">⚠️ Application Conflict Check</h2>
+                    <h2 className="card-title warning-text">⚠️ Installation Conflict Check</h2>
                     <br />
                     <p className="card-description">
                         The utility tool will forcefully shut down any running active instances of Steam to prevent local system file-lock conflicts.
@@ -203,14 +213,14 @@ function App() {
                     
                     <div className="action-row horizontal">
                         <button onClick={() => navigateToPage(2)} className="btn-accent" disabled={isInstalling}>
-                            Abort
+                            ← Back
                         </button>
                         <button 
                             className="btn-primary btn-warning-action" 
                             onClick={handleInstall} 
                             disabled={isInstalling}
                         >
-                            {isInstalling ? 'Processing Execution...' : 'Confirm & Initialize'}
+                            {isInstalling ? 'Processing Execution...' : 'Install Luma →'}
                         </button>
                     </div>
                 </div>
@@ -220,7 +230,3 @@ function App() {
 }
 
 export default App;
-
-function SelectFolder() {
-    throw new Error("Function not implemented.");
-}
