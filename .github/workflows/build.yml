@@ -1,0 +1,69 @@
+name: Build LumInstaller Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build Wails Application Binary
+        run: wails build -clean
+
+      - name: Sign Executable Binary via SignTool
+        shell: powershell
+        run: |
+          $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERT_BASE64 }}")
+          $certPath = Join-Path $env:TEMP "lum_private.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
+
+          $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -First 1).FullName
+
+          & $signtool sign /f $certPath /p "${{ secrets.CERT_PASSWORD }}" /fd sha256 ".\build\bin\LumInstaller.exe"
+          
+          Remove-Item $certPath -Force
+
+      - name: Upload Installer Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LumInstaller-Windows-x64
+          path: build/bin/LumInstaller.exe
+          if-no-files-found: error
+
+      - name: Create Release and Upload Asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/bin/LumInstaller.exe
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
