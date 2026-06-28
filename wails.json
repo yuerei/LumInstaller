@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "LumInstaller",
+  "outputfilename": "LumInstaller",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "eve",
+    "email": "63238154+yuerei@users.noreply.github.com"
+  },
+  "info": {
+    "companyName": "yuerei",
+    "productName": "LumInstaller",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026"
+  }
+}

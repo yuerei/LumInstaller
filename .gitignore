@@ -1,0 +1,40 @@
+# --- Wails Specifics ---
+build/bin/
+frontend/dist/
+frontend/wailsjs/
+
+# --- Frontend Dependencies & Logs ---
+frontend/node_modules/
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/pnpm-lock.yaml
+frontend/bun.lockb
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Go Backend ---
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+go.work
+
+# --- IDEs and System Files ---
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+*.cer
+*.bat
