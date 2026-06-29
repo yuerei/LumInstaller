@@ -7,13 +7,15 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "eve",
+    "name": "yuerei",
     "email": "63238154+yuerei@users.noreply.github.com"
   },
   "info": {
-    "companyName": "yuerei",
     "productName": "LumInstaller",
-    "productVersion": "0.2.0",
-    "copyright": "Copyright 2026"
-  }
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 yuerei"
+  },
+  "wailsjs:dir": "./frontend/wailsjs",
+  "assetdir": "./frontend/dist",
+  "reloaddirs": "./frontend/src"
 }
