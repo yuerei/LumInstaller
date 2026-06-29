@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,9 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sys/windows/registry"
 )
 
 type App struct { 
@@ -65,7 +64,7 @@ func (a *App) SaveConfig(path string) error {
 	configPath := a.getConfigPath()
 	configDir := filepath.Dir(configPath)
 
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, os.ModePerm); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -90,32 +89,25 @@ func (a *App) CheckFile(path string) bool {
 
 func (a *App) ForceClose(app string) error {
 	cmd := exec.Command("taskkill", "/F", "/IM", app)
-	_ = cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() == 128 { return nil }
+		}
+		return fmt.Errorf("could not close %s: %w", app, err)
+	}
 	return nil
 }
 
-func (a *App) DetectRunningSteamPath() string {
-	cmd := exec.Command("wmic", "process", "where", "name='steam.exe'", "get", "ExecutablePath")
-	var out bytes.Buffer
-	cmd.Stdout = &out
+func (a *App) DetectSteamPath() string {
+	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Valve\Steam`, registry.QUERY_VALUE)
+	if err != nil { return "" }
+	defer k.Close()
+
+	steamPath, _, err := k.GetStringValue("SteamPath")
+	if err != nil { return "" }
 	
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
-	if err := cmd.Run(); err != nil {
-		return ""
-	}
-
-	lines := strings.Split(out.String(), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.EqualFold(line, "ExecutablePath") {
-			continue
-		}
-		if strings.HasSuffix(strings.ToLower(line), "steam.exe") {
-			return filepath.Dir(line)
-		}
-	}
-	return ""
+	return filepath.Clean(steamPath)
 }
 
 func (a *App) SelectDirectory(text string) (string, error) {
@@ -123,20 +115,23 @@ func (a *App) SelectDirectory(text string) (string, error) {
 		DefaultDirectory: "C:\\",
 		Title:            text,
 	}
-
 	selectedDir, err := runtime.OpenDirectoryDialog(a.ctx, options)
-	if (err != nil) {
-		return "", fmt.Errorf("failed to open directory dialog: %w", err)
-	}
+	if (err != nil) { return "", fmt.Errorf("failed to open directory dialog: %w", err) }
 
 	return selectedDir, nil
 }
 
 func (a *App) Install(link string, name string, dest string) error {
-	downloadURL := link
+	runtime.EventsEmit(a.ctx, "install_status", "Downloading assets...")
+
+	req, err := http.NewRequestWithContext(a.ctx, "GET", link, nil)
+    if err != nil { return fmt.Errorf("failed to create request: %w", err) }
+
+	client := &http.Client{}
+    resp, err := client.Do(req)
+
 	tmpZipPath := filepath.Join(os.TempDir(), name + ".zip")
 
-	resp, err := http.Get(downloadURL)
 	if err != nil { return fmt.Errorf("failed to connect to download server: %w", err) }
 	defer resp.Body.Close()
 
@@ -161,6 +156,8 @@ func (a *App) Install(link string, name string, dest string) error {
 	if err != nil { return fmt.Errorf("failed to open zip archive: %w", err) }
 	defer archive.Close()
 
+	runtime.EventsEmit(a.ctx, "install_status", "Extracting files...")
+
 	cleanDest := filepath.Clean(dest)
 	for _, file := range archive.File {
 		filePath := filepath.Join(cleanDest, file.Name)
@@ -176,19 +173,20 @@ func (a *App) Install(link string, name string, dest string) error {
 
 		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil { return err }
 
-		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil { return err }
+		err = func() error {
+			dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+			if err != nil { return err }
+			defer dstFile.Close()
 
-		srcFile, err := file.Open()
-		if err != nil {
-			dstFile.Close()
+			srcFile, err := file.Open()
+			if err != nil { return err }
+			defer srcFile.Close()
+
+			_, err = io.Copy(dstFile, srcFile)
 			return err
-		}
+		}()
 
-		_, err = io.Copy(dstFile, srcFile)
-		dstFile.Close()
-		srcFile.Close()
-		if err != nil { return err }
+		if err != nil { return fmt.Errorf("failed to extract file %s: %w", file.Name, err) }
 	}
 
 	return nil
@@ -244,5 +242,74 @@ func (a *App) LaunchAndExit(app string) error {
 	}
 	
 	runtime.Quit(a.ctx)
+	return nil
+}
+
+func (a *App) DownloadAndExtractMod(url string, targetDir string) error {
+	tempFile, err := os.CreateTemp("", "mod-*.zip")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to download mod: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write to temp file: %v", err)
+	}
+
+	// 3. Extract the zip file
+	archive, err := zip.OpenReader(tempFile.Name())
+	if err != nil {
+		return fmt.Errorf("failed to open zip archive: %v", err)
+	}
+	defer archive.Close()
+
+	for _, f := range archive.File {
+		filePath := filepath.Join(targetDir, f.Name)
+
+		// Prevent Zip Slip vulnerability
+		if !strings.HasPrefix(filePath, filepath.Clean(targetDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("invalid file path: %s", filePath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(filePath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+			return err
+		}
+
+		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		srcFile, err := f.Open()
+		if err != nil {
+			dstFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(dstFile, srcFile)
+		dstFile.Close()
+		srcFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
