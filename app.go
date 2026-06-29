@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -30,21 +31,6 @@ const defaultSteamPath = "C:\\Program Files (x86)\\Steam"
 
 func NewApp() *App { 
 	return &App{}
-}
-
-func (a *App) LogStatusConsole(level string, message string) {
-	normalizedLevel := strings.ToLower(strings.TrimSpace(level))
-	if normalizedLevel == "" {
-		normalizedLevel = "info"
-	}
-
-	line := fmt.Sprintf("[%s] [%s] %s\n", time.Now().Format("15:04:05"), normalizedLevel, strings.TrimSpace(message))
-	switch normalizedLevel {
-	case "error":
-		_, _ = fmt.Fprint(os.Stderr, line)
-	default:
-		fmt.Print(line)
-	}
 }
 
 func (a *App) getConfigPath() string {
@@ -106,6 +92,30 @@ func (a *App) ForceClose(app string) error {
 	cmd := exec.Command("taskkill", "/F", "/IM", app)
 	_ = cmd.Run()
 	return nil
+}
+
+func (a *App) DetectRunningSteamPath() string {
+	cmd := exec.Command("wmic", "process", "where", "name='steam.exe'", "get", "ExecutablePath")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+
+	lines := strings.Split(out.String(), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.EqualFold(line, "ExecutablePath") {
+			continue
+		}
+		if strings.HasSuffix(strings.ToLower(line), "steam.exe") {
+			return filepath.Dir(line)
+		}
+	}
+	return ""
 }
 
 func (a *App) SelectDirectory(text string) (string, error) {

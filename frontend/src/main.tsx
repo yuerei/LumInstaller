@@ -3,7 +3,10 @@ import {createRoot} from 'react-dom/client'
 import "./index.css";
 import App from "./App.tsx";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip.tsx";
 createRoot(document.getElementById("root")!).render(<StrictMode>
-      <App />
-      <Toaster position="bottom-center" duration={1000}/>
+      <TooltipProvider delayDuration={200}>
+        <App />
+      </TooltipProvider>
+      <Toaster richColors position="bottom-right" theme="dark" />
   </StrictMode>);
