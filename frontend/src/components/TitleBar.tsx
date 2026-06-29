@@ -1,42 +1,25 @@
 import { Minus, X } from "lucide-react";
-
 import { WindowMinimise, Quit } from "../../wailsjs/runtime/runtime";
-
 import { Button } from "@/components/ui/button";
 
 export function TitleBar() {
-  const dragStyle = {
-    "--wails-draggable": "drag",
-    WebkitAppRegion: "drag",
-  } as React.CSSProperties;
-
-  const noDragStyle = {
-    "--wails-draggable": "no-drag",
-    WebkitAppRegion: "no-drag",
-  } as React.CSSProperties;
-
   return (
-    <div 
-      className="flex items-center justify-between w-full h-10 bg-[#111827] border-b border-gray-800 select-none z-50 relative"
-      style={dragStyle}
-    >
+    <div className="relative z-50 flex h-10 w-full select-none items-center justify-between border-b border-slate-800 bg-slate-900 [--wails-draggable:drag] [-webkit-app-region:drag]">
       {/* Left Section: App Logo & Title */}
-      <div className="flex items-center gap-2 px-4 pointer-events-none">
-        <span className="text-xs font-semibold text-gray-400 tracking-wider uppercase font-sans">
+      <div className="pointer-events-none flex items-center gap-2 px-4">
+        <span className="font-sans text-xs font-semibold tracking-wider text-slate-400">
           LumInstaller
         </span>
       </div>
 
       {/* Right Section: Windows Control Actions */}
-      <div 
-        className="flex items-center h-full"
-        style={noDragStyle}
-      >
+      <div className="flex h-full items-center [--wails-draggable:no-drag] [-webkit-app-region:no-drag]">
         {/* Minimize Button */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-12 rounded-none hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+          aria-label="Minimize window"
+          className="h-10 w-12 rounded-none text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
           onClick={WindowMinimise}
         >
           <Minus className="h-3.5 w-3.5" />
@@ -46,7 +29,8 @@ export function TitleBar() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-12 rounded-none hover:bg-rose-600 text-gray-400 hover:text-white transition-colors"
+          aria-label="Close window"
+          className="h-10 w-12 rounded-none text-slate-400 transition-colors hover:bg-rose-600 hover:text-white"
           onClick={Quit}
         >
           <X className="h-4 w-4" />

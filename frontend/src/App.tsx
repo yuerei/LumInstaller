@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from "sonner";
 
-import { CheckFile, SelectDirectory, DetectRunningSteamPath, SaveConfig, LoadConfig } from "../wailsjs/go/main/App";
+import { CheckFile, SelectDirectory, DetectSteamPath, SaveConfig, LoadConfig } from "../wailsjs/go/main/App";
 import { TitleBar } from "./components/TitleBar";
-
 import { Home } from "./components/Home";
 import { LumaPatch } from "./components/LumaPatch";
 import { Mods } from "./components/Mods";
@@ -11,44 +10,31 @@ import { Mods } from "./components/Mods";
 type SavedConfigType = { steamPath: string; };
 type FeaturePathway = 'home' | 'luma' | 'mods';
 
-const DELAY_MS = { REFRESH: 500 } as const;
-
 export default function App() {
     const [pathway, setPathway] = useState<FeaturePathway>('home');
-    const [isNavigating, setIsNavigating] = useState<boolean>(false);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-    const [steamExists, setSteamExists] = useState<string>('Checking...');
-    const [lumaExists, setLumaExists] = useState<string>('Checking...');
+
+    const [isSteamFound, setIsSteamFound] = useState<boolean>(false);
+    const [isLumaFound, setIsLumaFound] = useState<boolean>(false);
     const [steamPath, setSteamPath] = useState<string>("");
 
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
     const verifySteam = useCallback(async (path: string): Promise<boolean> => {
-        if (!path) {
-            setSteamExists('Missing');
-            return false;
-        }
+        if (!path) return false;
         const exists = await CheckFile(`${path}\\steam.exe`);
-        setSteamExists(exists ? 'Found' : 'Missing');
+        setIsSteamFound(exists);
         return exists;
     }, []);
-
+    
     const verifyLuma = useCallback(async (path: string): Promise<boolean> => {
-        if (!path) {
-            setLumaExists('Not Installed');
-            return false;
-        }
+        if (!path) return false;
         const exists = await CheckFile(`${path}\\user32.dll`);
-        setLumaExists(exists ? 'Active' : 'Not Installed');
+        setIsLumaFound(exists);
         return exists;
     }, []);
 
     const handleRefresh = async (path: string = steamPath) => {
         if (!path) return;
         setIsRefreshing(true);
-        setSteamExists('Checking...');
-        setLumaExists('Checking...');
-        await delay(DELAY_MS.REFRESH);
         await Promise.all([verifySteam(path), verifyLuma(path)]);
         setIsRefreshing(false);
         toast.success("Status Updated", { description: "System files re-scanned successfully." });
@@ -75,7 +61,7 @@ export default function App() {
                 let path = saved?.steamPath || "";
 
                 if (!path) {
-                    const runningPath = await DetectRunningSteamPath();
+                    const runningPath = await DetectSteamPath();
                     if (runningPath) {
                         path = runningPath;
                         await SaveConfig(path); 
@@ -92,50 +78,34 @@ export default function App() {
         
         initializeConfigAndPaths();
     }, [verifySteam, verifyLuma]);
-
-    const handleNavigate = async (target: FeaturePathway) => {
-        if (target === pathway) return;
-        setIsNavigating(true); 
-        await delay(200);   
-        setPathway(target); 
-        setIsNavigating(false);       
-    };
-
-    const isSteamFound = steamExists === 'Found';
-    const isLumaFound = lumaExists === 'Active';
+    
     const isPatchReady = isSteamFound && isLumaFound;
-
-    const transitionClass = isNavigating 
-        ? 'opacity-0 scale-95 transition-all duration-200 ease-out' 
-        : 'opacity-100 scale-100 transition-all duration-200 ease-out';
         
     return (
-        <div className="flex flex-col h-screen w-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top,#1e293b_0%,#0f172a_100%)] text-slate-100 overflow-hidden font-sans select-none">
+        <div className="flex h-screen w-screen select-none flex-col overflow-hidden bg-[#0f172a] bg-[radial-gradient(circle_at_top,#1e293b_0%,#0f172a_100%)] font-sans text-slate-100">
             <TitleBar />
-            <div id="app" className="flex-1 flex flex-col justify-center items-center overflow-auto p-6 box-border">
-                <div className={`w-full max-w-2xl flex justify-center items-center ${transitionClass}`}>
-                {pathway === 'home' && (
-                    <Home onSelectFeature={(feat) => handleNavigate(feat)} isPatchReady={isPatchReady} />
-                )}  
+            <div id="app" className="box-border flex flex-1 flex-col items-center justify-center overflow-auto p-6">
+                <div className="flex w-full max-w-2xl items-center justify-center opacity-100 transition-opacity duration-200">
+                    {pathway === 'home' && (
+                        <Home onSelectPage={setPathway} isPatchReady={isPatchReady} />
+                    )}
 
-                {pathway === 'luma' && (
-                    <LumaPatch 
-                        steamPath={steamPath}
-                        isSteamFound={isSteamFound}
-                        steamExists={steamExists}
-                        isLumaFound={isLumaFound}
-                        lumaExists={lumaExists}
-                        isPatchReady={isPatchReady}
-                        isRefreshing={isRefreshing}
-                        handleRefresh={handleRefresh}
-                        onSelectFolder={selectFolder}
-                        onBack={() => handleNavigate('home')}
-                    />
-                )}
+                    {pathway === 'luma' && (
+                        <LumaPatch 
+                            steamPath={steamPath}
+                            isSteamFound={isSteamFound}
+                            isLumaFound={isLumaFound}
+                            isPatchReady={isPatchReady}
+                            isRefreshing={isRefreshing}
+                            handleRefresh={handleRefresh}
+                            onSelectFolder={selectFolder}
+                            onBack={() => setPathway('home')}
+                        />
+                    )}
 
-                {pathway === 'mods' && (
-                    <Mods onCancel={() => handleNavigate('home')} />
-                )}
+                    {pathway === 'mods' && (
+                        <Mods onCancel={() => setPathway('home')} steamPath={steamPath} />
+                    )}
                 </div>
             </div>
         </div>
