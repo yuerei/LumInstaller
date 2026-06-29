@@ -1,50 +1,117 @@
+import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+
+import { DeleteFile, Execute, ForceClose, Install, LaunchAndExit, RenameFile } from "../../wailsjs/go/main/App";
+
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft } from "lucide-react";
 
 interface LumaPatchProps {
-    page: number;
-    onNavigatePage: (target: number) => void;
-
     steamPath: string;
     isSteamFound: boolean;
     steamExists: string;
     isLumaFound: boolean;
     lumaExists: string;
     isPatchReady: boolean;
-
     isRefreshing: boolean;
     handleRefresh: (steamPath: string) => void;
-    isInstalling: boolean;
-    installStatus: string;
-    onInstall: () => void;
     onSelectFolder: () => void;
-    handleLaunchAndClose: () => void;
     onBack: () => void;
 }
 
+const DELAY_MS = {
+    NAVIGATE: 200,
+    FORCE_CLOSE: 1000,
+    INSTALL: 800,
+    CLEANUP: 500,
+    COMPLETE: 1500
+} as const;
+
 export function LumaPatch({
-    page,
-    onNavigatePage,
-    
     steamPath,
     isSteamFound,
     steamExists,
     isLumaFound,
     lumaExists,
     isPatchReady,
-    
     isRefreshing,
     handleRefresh,
-    isInstalling,
-    installStatus,
-    onInstall,
     onSelectFolder,
-    handleLaunchAndClose,
     onBack,
 }: LumaPatchProps) {
+    const [page, setPage] = useState<number>(1);
+    const [isNavigating, setIsNavigating] = useState<boolean>(false);
+    const [installStatus, setInstallStatus] = useState<string>('Ready');
+    const [isInstalling, setIsInstalling] = useState<boolean>(false);
+
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const onNavigatePage = async (target: number) => {
+        setIsNavigating(true);
+        await delay(DELAY_MS.NAVIGATE);
+        setPage(target);
+        setIsNavigating(false);
+    };
+
+    const handleInstall = async () => {
+        setIsInstalling(true);
+        try {
+            setInstallStatus('Closing Steam forcefully...');
+            await ForceClose("steam.exe");
+            await delay(DELAY_MS.FORCE_CLOSE);
+            
+            setInstallStatus('Downloading assets...');
+            await Install("https://github.com/yuerei/LumInstaller/releases/download/v0.1.0/Luma.zip", "luma", steamPath);
+            await delay(DELAY_MS.INSTALL);
+            
+            setInstallStatus('Flushing app cache blocks...');
+            const lumaExePath = `${steamPath}\\DeleteSteamAppCache.exe`;
+            await Execute(lumaExePath);
+            await delay(DELAY_MS.INSTALL);
+
+            setInstallStatus('Configuring system bindings...');
+            await RenameFile(`${steamPath}\\user32SF.dll`, `${steamPath}\\user32.dll`);
+            await delay(DELAY_MS.INSTALL);
+
+            setInstallStatus('Cleaning up temporary tools...');
+            await DeleteFile(lumaExePath);
+            await delay(DELAY_MS.CLEANUP);
+
+            setInstallStatus('✨ Installation Complete!');            
+            await delay(DELAY_MS.COMPLETE);
+        
+            await handleRefresh(steamPath);
+            setPage(1);
+            setIsInstalling(false);
+            setInstallStatus('Ready');
+            
+            toast.success("Installation Complete", {
+                description: "GreenLuma hooks injected successfully!"
+            });
+        } catch (err) {
+            setInstallStatus(`Error encountered: ${err}`);
+            setIsInstalling(false);
+            toast.error("Installation Failed", {
+                description: `Execution terminated: ${err}`
+            });
+        }
+    };
+
+    const handleLaunchAndClose = async () => {
+        try { 
+            await LaunchAndExit(`${steamPath}\\steam.exe`); 
+        } catch (err) { 
+            toast.error("Launch Error", { description: `Could not launch Steam automatically: ${err}` });
+        }
+    };
+
+    const transitionClass = isNavigating 
+    ? 'opacity-0 scale-95 -translate-y-2 transition-all duration-200 ease-out' 
+    : 'opacity-100 scale-100 translate-y-0 transition-all duration-200 ease-out';
+    
     return (
-        <div className="bg-slate-800/70 backdrop-blur-md border border-white/10 rounded-2xl w-full p-8 shadow-2xl relative">
+        <div className={`bg-slate-800/70 backdrop-blur-md border border-white/10 rounded-2xl w-[60%] p-8 shadow-2xl relative ${transitionClass}`}>
         {/* PAGE 1: DASHBOARD */}
         {page === 1 && (<> 
         <div className="flex items-center gap-3 mb-6 mt-2">
@@ -74,7 +141,7 @@ export function LumaPatch({
                         <span className="text-[0.75rem] font-bold p-1 px-2.5 rounded-md uppercase tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/20">Edit</span>
                     </div>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="bg-slate-950 border-white/10 text-slate-200 text-xs shadow-lg">
+                <TooltipContent side="right" className="max-w-45 bg-slate-950 border-white/10 text-slate-200 text-xs shadow-lg">
                     Click to change your default Steam folder location
                 </TooltipContent>
             </Tooltip>
@@ -150,7 +217,7 @@ export function LumaPatch({
                     ← Back
                 </Button>
                 <Button 
-                    onClick={onInstall} 
+                    onClick={handleInstall} 
                     disabled={isInstalling}
                     className="flex-1 h-11 bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold rounded-xl shadow-[0_4px_12px_rgba(234,179,8,0.2)] transition-all"
                 >

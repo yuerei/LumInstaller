@@ -42,8 +42,8 @@ export function Home({
                     </div>
                 </TooltipTrigger>
                 {!isPatchReady && (
-                    <TooltipContent side="top" className="bg-slate-950 border-white/10 text-slate-200 text-xs shadow-lg max-w-62.5 text-center">
-                        You must complete the core Luma setup process before unlocking extension modifications.
+                    <TooltipContent side="right" className="bg-slate-950 border-white/10 text-slate-200 text-xs shadow-lg max-w-45 text-center">
+                        You must complete the Luma patch process first.
                     </TooltipContent>
                 )}
             </Tooltip>
