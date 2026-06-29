@@ -7,7 +7,7 @@ import { Home } from "./components/Home";
 import { LumaPatch } from "./components/LumaPatch";
 import { Mods } from "./components/Mods";
 
-type SavedConfigType = { steamPath: string; };
+type SavedConfigType = { steamPath: string; luma: boolean; };
 type FeaturePathway = 'home' | 'luma' | 'mods';
 
 export default function App() {
@@ -35,48 +35,39 @@ export default function App() {
     const handleRefresh = async (path: string = steamPath) => {
         if (!path) return;
         setIsRefreshing(true);
-        await Promise.all([verifySteam(path), verifyLuma(path)]);
-        setIsRefreshing(false);
-        toast.success("Status Updated", { description: "System files re-scanned successfully." });
-    };
-
-    const selectFolder = async () => {
         try {
-            const result = await SelectDirectory("Select your Steam folder");
-            if (result?.trim()) {
-                setSteamPath(result);
-                await SaveConfig(result);
-                await handleRefresh(result);
-                toast.success("Configuration Saved", { description: `Target path updated to ${result}` });
-            }
-        } catch (err) { 
-            toast.error("Directory Error", { description: `Could not configure directory: ${err}` });
+            const steamOk = await verifySteam(path);
+            const lumaOk = await verifyLuma(path);
+            
+            await SaveConfig({ steamPath: path, luma: lumaOk });
+        } catch (err) {
+            console.error("Failed executing configuration save verification loop:", err);
+        } finally {
+            setIsRefreshing(false);
         }
     };
 
     useEffect(() => {
-        const initializeConfigAndPaths = async () => {
+        async function initializeConfiguration() {
             try {
-                const saved = (await LoadConfig()) as SavedConfigType;
-                let path = saved?.steamPath || "";
+                let currentConfig = await LoadConfig();
+                let chosenPath = currentConfig.steamPath;
 
-                if (!path) {
-                    const runningPath = await DetectSteamPath();
-                    if (runningPath) {
-                        path = runningPath;
-                        await SaveConfig(path); 
-                        toast.success("Steam Path Auto-Detected", { description: `Found active directory at: ${path}` });
-                    }
-                }
+                if (!chosenPath) { chosenPath = await DetectSteamPath(); }
 
-                setSteamPath(path);
-                await Promise.all([verifySteam(path), verifyLuma(path)]);
-            } catch (err) {
-                toast.error("Initialization Error", { description: "Failed to read configuration mapping parameters." });
+                setSteamPath(chosenPath);
+                
+                const steamOk = await verifySteam(chosenPath);
+                const lumaOk = await verifyLuma(chosenPath);
+
+                await SaveConfig({ steamPath: chosenPath, luma: lumaOk });
+            } catch (error) {
+                toast.error("Initialization Alert", {
+                    description: "Unable to reconstruct local initialization variables safely."
+                });
             }
-        };
-        
-        initializeConfigAndPaths();
+        }
+        initializeConfiguration();
     }, [verifySteam, verifyLuma]);
     
     const isPatchReady = isSteamFound && isLumaFound;
@@ -98,7 +89,13 @@ export default function App() {
                             isPatchReady={isPatchReady}
                             isRefreshing={isRefreshing}
                             handleRefresh={handleRefresh}
-                            onSelectFolder={selectFolder}
+                            onSelectFolder={async () => {
+                                const selected = await SelectDirectory("Select your Steam folder");
+                                if (selected) {
+                                    setSteamPath(selected);
+                                    handleRefresh(selected);
+                                }
+                            }}
                             onBack={() => setPathway('home')}
                         />
                     )}

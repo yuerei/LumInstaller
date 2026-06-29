@@ -22,8 +22,8 @@ type App struct {
 }
 
 type AppConfig struct { 
-	Luma bool   		`json:"luma"`
-	SteamPath string 	`json:"steamPath"`
+	Luma      bool   `json:"luma"`
+	SteamPath string `json:"steamPath"`
 }
 
 const defaultSteamPath = "C:\\Program Files (x86)\\Steam"
@@ -47,36 +47,28 @@ func (a *App) shutdown(ctx context.Context) {}
 func (a *App) LoadConfig() AppConfig {
 	configPath := a.getConfigPath()
 	
-	if _, err := os.Stat(configPath); os.IsNotExist(err) { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {  return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
-	file, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
 	var config AppConfig
-	if err := json.Unmarshal(file, &config); err != nil { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
+	if err := json.Unmarshal(data, &config); err != nil { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
-	if strings.TrimSpace(config.SteamPath) == "" { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
-
+	config.SteamPath = filepath.Clean(config.SteamPath)
 	return config
 }
 
-func (a *App) SaveConfig(path string) error {
+func (a *App) SaveConfig(config AppConfig) error {
 	configPath := a.getConfigPath()
-	configDir := filepath.Dir(configPath)
+	
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil { return fmt.Errorf("failed creating application configuration directory hierarchy: %w", err)}
 
-	if err := os.MkdirAll(configDir, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
+	config.SteamPath = filepath.Clean(config.SteamPath)
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil { return fmt.Errorf("failed encoding configuration payload into JSON structure: %w", err) }
 
-	config := AppConfig{Luma: false, SteamPath: path}
-	file, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to parse configuration schema: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, file, 0644); err != nil {
-		return fmt.Errorf("failed to save configuration parameters: %w", err)
-	}
+	if err := os.WriteFile(configPath, data, 0644); err != nil { return fmt.Errorf("failed writing config down to atomic disk block: %w", err) }
 
 	return nil
 }
