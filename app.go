@@ -12,15 +12,40 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type AppConfig struct { SteamPath string `json:"steamPath"` }
-type App struct { ctx context.Context }
+type App struct { 
+	ctx context.Context 
+}
 
-func NewApp() *App                         { return &App{} }
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+type AppConfig struct { 
+	Luma bool   		`json:"luma"`
+	SteamPath string 	`json:"steamPath"`
+}
+
+const defaultSteamPath = "C:\\Program Files (x86)\\Steam"
+
+func NewApp() *App { 
+	return &App{}
+}
+
+func (a *App) LogStatusConsole(level string, message string) {
+	normalizedLevel := strings.ToLower(strings.TrimSpace(level))
+	if normalizedLevel == "" {
+		normalizedLevel = "info"
+	}
+
+	line := fmt.Sprintf("[%s] [%s] %s\n", time.Now().Format("15:04:05"), normalizedLevel, strings.TrimSpace(message))
+	switch normalizedLevel {
+	case "error":
+		_, _ = fmt.Fprint(os.Stderr, line)
+	default:
+		fmt.Print(line)
+	}
+}
 
 func (a *App) getConfigPath() string {
 	localAppData := os.Getenv("LOCALAPPDATA")
@@ -28,22 +53,26 @@ func (a *App) getConfigPath() string {
 	return filepath.Join(localAppData, "LumInstaller", "config.json")
 }
 
-func (a *App) GetDefaultSteamPath() string { return "C:\\Program Files (x86)\\Steam" }
+func (a *App) startup(ctx context.Context) { 
+	a.ctx = ctx
+}
 
-func (a *App) LoadConfig() string {
+func (a *App) shutdown(ctx context.Context) {}
+
+func (a *App) LoadConfig() AppConfig {
 	configPath := a.getConfigPath()
 	
-	if _, err := os.Stat(configPath); os.IsNotExist(err) { return a.GetDefaultSteamPath() }
+	if _, err := os.Stat(configPath); os.IsNotExist(err) { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
 	file, err := os.ReadFile(configPath)
-	if err != nil { return a.GetDefaultSteamPath() }
+	if err != nil { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
 	var config AppConfig
-	if err := json.Unmarshal(file, &config); err != nil { return a.GetDefaultSteamPath() }
+	if err := json.Unmarshal(file, &config); err != nil { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
-	if strings.TrimSpace(config.SteamPath) == "" { return a.GetDefaultSteamPath() }
+	if strings.TrimSpace(config.SteamPath) == "" { return AppConfig{Luma: false, SteamPath: defaultSteamPath} }
 
-	return config.SteamPath
+	return config
 }
 
 func (a *App) SaveConfig(path string) error {
@@ -54,7 +83,7 @@ func (a *App) SaveConfig(path string) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	config := AppConfig{SteamPath: path}
+	config := AppConfig{Luma: false, SteamPath: path}
 	file, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to parse configuration schema: %w", err)
