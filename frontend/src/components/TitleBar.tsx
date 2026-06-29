@@ -1,16 +1,10 @@
-import { useState } from "react";
-import { Minus, Square, X, Copy } from "lucide-react";
+import { Minus, X } from "lucide-react";
+
+import { WindowMinimise, Quit } from "../../wailsjs/runtime/runtime";
+
 import { Button } from "@/components/ui/button";
-import { WindowMinimise, WindowToggleMaximise, Quit } from "../../wailsjs/runtime/runtime";
 
 export function TitleBar() {
-  const [isMaximized, setIsMaximized] = useState(false);
-
-  const handleMaximize = () => {
-    WindowToggleMaximise();
-    setIsMaximized((prev) => !prev);
-  };
-
   const dragStyle = {
     "--wails-draggable": "drag",
     WebkitAppRegion: "drag",
@@ -46,20 +40,6 @@ export function TitleBar() {
           onClick={WindowMinimise}
         >
           <Minus className="h-3.5 w-3.5" />
-        </Button>
-
-        {/* Maximize / Restore Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-12 rounded-none hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
-          onClick={handleMaximize}
-        >
-          {isMaximized ? (
-            <Copy className="h-3.5 w-3.5 rotate-180 scale-x-[-1]" />
-          ) : (
-            <Square className="h-3.5 w-3.5" />
-          )}
         </Button>
 
         {/* Close Button */}
