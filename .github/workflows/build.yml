@@ -70,6 +70,12 @@ jobs:
         run: |
           choco install upx -y
 
+      - name: Move App Icon
+        shell: pwsh
+        run: |
+          if (!(Test-Path "build")) { mkdir build }
+          Move-Item -Path "frontend\public\icon.png" -Destination "build\appicon.png" -Force
+
       - name: Build application
         run: wails build
 
