@@ -1,6 +1,7 @@
 import { CheckFile, ForceClose, SelectDirectory, Install, Execute, RenameFile, DeleteFile, LaunchAndExit, SaveConfig, LoadConfig } from "../wailsjs/go/main/App";
 import { useState, useEffect } from 'react';
 import './App.css';
+import { TitleBar } from "./components/TItleBar";
 
 function App() {
     const [page, setPage] = useState<number>(1);
@@ -64,8 +65,8 @@ function App() {
     useEffect(() => {
         const initializeConfigAndPaths = async () => {
             const savedPath = await LoadConfig();
-            setSteamPath(savedPath);
-            await Promise.all([verifySteam(savedPath), verifyLuma(savedPath)]);
+            setSteamPath(savedPath.steamPath);
+            await Promise.all([verifySteam(savedPath.steamPath), verifyLuma(savedPath.steamPath)]);
         };
         
         initializeConfigAndPaths();
@@ -120,8 +121,11 @@ function App() {
     const isEverythingReady = isSteamFound && isLumaFound;
 
     const transitionClass = isNavigating ? 'fade-out' : 'fade-in';
-    return (
-        <div id="app">
+    return (<>
+    <div className="flex flex-col h-screen w-screen bg-[#111827] text-foreground overflow-hidden">
+        <TitleBar />
+        
+        <div id="app" className="flex-1 overflow-auto p-6">
             {/* PAGE 1: DASHBOARD */}
             {page === 1 && (
                 <div className={`status-card ${transitionClass}`}>
@@ -226,7 +230,8 @@ function App() {
                 </div>
             )}
         </div>
-    );
+    </div>
+    </>);
 }
 
 export default App;
