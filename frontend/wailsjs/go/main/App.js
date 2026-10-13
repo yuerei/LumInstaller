@@ -9,3 +9,11 @@ export function ChooseFolder() {
 export function Download(arg1, arg2, arg3) {
   return window['go']['main']['App']['Download'](arg1, arg2, arg3);
 }
+
+export function IsPrismLauncherInstalled() {
+  return window['go']['main']['App']['IsPrismLauncherInstalled']();
+}
+
+export function PatchPrismAccount(arg1) {
+  return window['go']['main']['App']['PatchPrismAccount'](arg1);
+}

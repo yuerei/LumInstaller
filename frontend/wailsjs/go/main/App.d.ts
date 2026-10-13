@@ -4,3 +4,7 @@
 export function ChooseFolder():Promise<string>;
 
 export function Download(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function IsPrismLauncherInstalled():Promise<boolean>;
+
+export function PatchPrismAccount(arg1:string):Promise<void>;

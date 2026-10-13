@@ -3,17 +3,20 @@ import { Settings, Gamepad2, Package, ChevronLeft, Wrench } from "lucide-react";
 import { GameCard } from "@/components/GameCard";
 import { ModCard } from "@/components/ModCard";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import { PatchCard } from "@/components/PatchCard";
 
 import { useGameFolders } from "@/hooks/useGameFolders";
 import { useDownloads } from "@/hooks/useDownloads";
 
 import { mockCatalog } from "@/data/catalog";
+import { patches } from "@/data/patches";
 
 function App() {
   const [active, setActive] = useState<"catalog" | "patch" | "settings">(
     "catalog",
   );
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [selectedPatch, setSelectedPatch] = useState<string | null>(null);
 
   const groupedCatalog = useMemo(() => {
     const groups: Record<string, typeof mockCatalog> = {};
@@ -27,6 +30,12 @@ function App() {
   const { downloads, start } = useDownloads();
 
   const gameList = useMemo(() => Object.keys(groupedCatalog), [groupedCatalog]);
+
+  const activePatch = useMemo(
+    () => patches.find((p) => p.id === selectedPatch) ?? null,
+    [selectedPatch],
+  );
+  const ActivePatchPage = activePatch?.page ?? null;
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -55,6 +64,7 @@ function App() {
             onClick={() => {
               setActive("patch");
               setSelectedGame(null);
+              setSelectedPatch(null);
             }}
           />
           <NavItem
@@ -64,6 +74,7 @@ function App() {
             onClick={() => {
               setActive("settings");
               setSelectedGame(null);
+              setSelectedPatch(null);
             }}
           />
         </nav>
@@ -80,14 +91,18 @@ function App() {
             {active === "catalog"
               ? "Catalog"
               : active === "patch"
-                ? "Patch"
+                ? activePatch
+                  ? activePatch.title
+                  : "Patch"
                 : "Settings"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {active === "catalog"
               ? "Browse and install mods and menus"
               : active === "patch"
-                ? "Apply patches to your games"
+                ? activePatch
+                  ? activePatch.description
+                  : "Apply patches to your games"
                 : "Configure download folders per game"}
           </p>
         </header>
@@ -138,11 +153,33 @@ function App() {
               </div>
             )
           ) : active === "patch" ? (
-            // ---- Patch (placeholder) ----
-            <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
-              <Wrench className="size-10 mb-4 opacity-40" />
-              <p className="text-sm">Patch tools coming soon.</p>
-            </div>
+            activePatch === null ? (
+              // ---- Patch grid ----
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {patches.map((patch) => (
+                  <PatchCard
+                    key={patch.id}
+                    title={patch.title}
+                    description={patch.description}
+                    icon={patch.icon}
+                    onClick={() => setSelectedPatch(patch.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              // ---- Selected patch page ----
+              <div>
+                <button
+                  onClick={() => setSelectedPatch(null)}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-5"
+                >
+                  <ChevronLeft className="size-4" />
+                  Back to patches
+                </button>
+
+                {ActivePatchPage && <ActivePatchPage />}
+              </div>
+            )
           ) : (
             <SettingsPanel
               games={gameList}

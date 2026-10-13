@@ -114,6 +114,92 @@ func (a *App) Download(modID, url, destFolder string) error {
 	return nil
 }
 
+// prismDir returns the PrismLauncher data directory inside %APPDATA%.
+func prismDir() (string, error) {
+	appData := os.Getenv("APPDATA")
+	if appData == "" {
+		return "", fmt.Errorf("APPDATA environment variable not set")
+	}
+	return filepath.Join(appData, "PrismLauncher"), nil
+}
+
+// IsPrismLauncherInstalled reports whether PrismLauncher's data folder exists
+// under %APPDATA%\PrismLauncher.
+func (a *App) IsPrismLauncherInstalled() bool {
+	dir, err := prismDir()
+	if err != nil {
+		return false
+	}
+	info, err := os.Stat(dir)
+	return err == nil && info.IsDir()
+}
+
+// prismAccountsTemplate is the accounts.json content written by PatchPrismAccount.
+// The %s placeholder is replaced with the chosen username (used in two places).
+const prismAccountsTemplate = `{
+    "accounts": [
+        {
+            "entitlement": {
+                "canPlayMinecraft": true,
+                "ownsMinecraft": true
+            },
+            "msa-client-id": "",
+            "type": "MSA"
+        },
+        {
+            "active": true,
+            "profile": {
+                "capes": [],
+                "id": "0c79d88a112537a0a302f01afa6bc94a",
+                "name": "%[1]s",
+                "skin": {
+                    "id": "",
+                    "url": "",
+                    "variant": ""
+                }
+            },
+            "type": "Offline",
+            "ygg": {
+                "extra": {
+                    "clientToken": "8be89b1112474b5fb8f061699ff41bda",
+                    "userName": "%[1]s"
+                },
+                "iat": 1738858981,
+                "token": "0"
+            }
+        }
+    ],
+    "formatVersion": 3
+}
+`
+
+// PatchPrismAccount writes an offline account entry with the given username
+// into %APPDATA%\PrismLauncher\accounts.json.
+func (a *App) PatchPrismAccount(username string) error {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	dir, err := prismDir()
+	if err != nil {
+		return err
+	}
+	if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+		return fmt.Errorf("PrismLauncher is not installed")
+	}
+
+	// Escape the username so it is valid inside a JSON string.
+	safe := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(username)
+	content := fmt.Sprintf(prismAccountsTemplate, safe)
+
+	destPath := filepath.Join(dir, "accounts.json")
+	if err := os.WriteFile(destPath, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("cannot write accounts.json: %w", err)
+	}
+	return nil
+}
+
 func (a *App) emitProgress(modID string, downloaded, total int64, start time.Time, done bool) {
 	elapsed := time.Since(start).Seconds()
 	var speed, eta, percent float64
