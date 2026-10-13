@@ -1,59 +1,84 @@
-# LumInstaller 🚀
+# LumInstaller
 
-LumInstaller is a lightweight, high-performance desktop auto-installer utility built with **Go (Wails v2)** and **React (TypeScript)**. It features a sleek, non-resizable glassmorphic dashboard interface, smooth slide transitions, and robust automated directory management safely optimized for Windows environments.
+A desktop mod & menu installer built with [Wails](https://wails.io) (Go + React/TypeScript).
+Browse a remotely-hosted catalog, install mods per game, patch PrismLauncher, and
+install Minecraft modpacks directly as PrismLauncher instances.
 
-## ✨ Features
+## Features
 
-- **Fluid Interface:** Sleek, modern custom UI built with modern React state animations and a clean radial background framework.
-- **Safe Directory Operations:** Integrated system path validation checks, force-closing routines to prevent file-locking conflicts, and path traversal (**Zip Slip**) security guards.
+- **Catalog** — mods/menus grouped by game, fetched from a remote `catalog.json`
+  (CDN-hosted) with an on-disk cache for offline use.
+- **Per-game install folders** — remembered between launches; Minecraft defaults
+  to `%APPDATA%\PrismLauncher\instances`.
+- **Minecraft modpacks** — a modpack `.zip` is extracted into a proper
+  PrismLauncher instance (`instance.cfg` + `mmc-pack.json` pinning Minecraft and
+  Forge), not just dropped as a file.
+- **PrismLauncher patch** — detects an install and writes an offline account to
+  `accounts.json`.
+- **Update notifier** — checks GitHub Releases on launch and shows a banner when
+  a newer version is available.
 
----
+## Requirements
 
-## 🛠️ Tech Stack
+- [Go](https://go.dev/dl/) 1.21+
+- [Node.js](https://nodejs.org/) 18+
+- [Wails CLI](https://wails.io/docs/gettingstarted/installation): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 
-- **Backend:** Go v1.21+ (Wails v2 framework)
-- **Frontend:** React v18+, TypeScript
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Ensure you have the following dependencies installed on your development machine:
-- [Go](https://go.dev/doc/install) (v1.21 or newer)
-- [Node.js](https://nodejs.org/) (v22 LTS recommended)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation) (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
-
-### Local Development
-
-1. Clone the repository to your machine:
-   ```bash
-   git clone https://github.com/yuerei/LumInstaller.git
-   cd LumInstaller
-   ```
-
-2. Run the application in hot-reload development mode:
-   ```bash
-   wails dev
-   ```
-
-### Production Build
-
-To clear the internal cache and compile a pristine, optimized Windows executable locally, run:
+## Development
 
 ```bash
-wails build -clean
-
+wails dev
 ```
 
-The final binary will be generated under the `build/bin/` directory.
+Runs a Vite dev server with hot reload. Go methods are callable from the browser
+dev server at http://localhost:34115.
 
----
+## Building
 
-## 👤 Author
+```bash
+wails build
+```
 
-* **Eve** - [@yuerei](https://github.com/yuerei)
-* **Website:** [eve.is-a.dev](https://eve.is-a.dev)
+Produces a redistributable binary in `build/bin/`.
 
-Copyright © 2026
+## Catalog
+
+The catalog is a JSON file hosted in a separate repo and served over jsDelivr.
+Each entry:
+
+```json
+{
+  "version": 1,
+  "updatedAt": "2026-10-13T00:00:00Z",
+  "mods": [
+    {
+      "id": "rlcraft",
+      "name": "RLCraft",
+      "game": "Minecraft",
+      "description": "...",
+      "size": 350000000,
+      "filename": "RLCraft.zip",
+      "url": "https://.../RLCraft.zip",
+      "version": "2.9.3",
+      "minecraft": "1.12.2",
+      "forge": "14.23.5.2860",
+      "instanceName": "RLCraft"
+    }
+  ]
+}
+```
+
+`minecraft` / `forge` / `instanceName` are only needed for Minecraft modpack
+entries; their presence triggers PrismLauncher instance extraction.
+
+## Releasing
+
+When cutting a new version, update it in three places and tag the release:
+
+1. `update.go` → `AppVersion`
+2. `wails.json` → `info.productVersion`
+3. the GitHub release tag (e.g. `v0.2.0`)
+
+## License
+
+See [LICENSE](LICENSE).

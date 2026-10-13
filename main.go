@@ -2,46 +2,35 @@ package main
 
 import (
 	"embed"
-	"log"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  			"LumInstaller",
-		Width:  			1024,
-		Height: 			600,
-		DisableResize:      true,
-		Frameless: 			true,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		BackgroundColour:	&options.RGBA{R: 0, G: 0, B: 0, A: 255},
-		OnStartup:        	app.startup,
-		OnShutdown:       	app.shutdown,
+		Title:         "LumInstaller",
+		Width:         1024,
+		Height:        768,
+		Fullscreen:    false,
+		DisableResize: true,
+		OnStartup:     app.startup,
 		Bind: []interface{}{
 			app,
 		},
-		Windows: &windows.Options{
-			WebviewIsTransparent:              false,
-			WindowIsTranslucent:               false,
-			DisableWindowIcon:                 false,
-			DisableFramelessWindowDecorations: false,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
 		},
+		// BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 	})
 
 	if err != nil {
-		log.Fatal("Error:", err.Error())
+		println("Error:", err.Error())
 	}
 }
