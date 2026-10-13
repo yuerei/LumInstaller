@@ -1,12 +1,14 @@
-import { StrictMode } from "react";
+import React from 'react'
 import {createRoot} from 'react-dom/client'
-import "./index.css";
-import App from "./App.tsx";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip.tsx";
-createRoot(document.getElementById("root")!).render(<StrictMode>
-      <TooltipProvider delayDuration={200}>
-        <App />
-      </TooltipProvider>
-      <Toaster richColors position="bottom-right" theme="dark" />
-  </StrictMode>);
+import './style.css'
+import App from './App'
+
+const container = document.getElementById('root')
+
+const root = createRoot(container!)
+
+root.render(
+    <React.StrictMode>
+        <App/>
+    </React.StrictMode>
+)
