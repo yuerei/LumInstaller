@@ -12,6 +12,17 @@ export interface DownloadState {
   error?: string;
 }
 
+/** Mirrors the Go `DownloadProgress` struct emitted on "download:progress". */
+interface DownloadProgressEvent {
+  modId: string;
+  downloaded: number;
+  total: number;
+  percent: number;
+  speedBps: number;
+  etaSeconds: number;
+  done: boolean;
+}
+
 const initial: DownloadState = {
   status: "idle",
   percent: 0,
@@ -26,7 +37,7 @@ export function useDownloads() {
 
   useEffect(() => {
     // Listen for progress events emitted from Go.
-    const cancel = EventsOn("download:progress", (p: any) => {
+    const cancel = EventsOn("download:progress", (p: DownloadProgressEvent) => {
       setDownloads((prev) => ({
         ...prev,
         [p.modId]: {
@@ -50,7 +61,7 @@ export function useDownloads() {
       }));
       try {
         await Download(modId, url, destFolder);
-      } catch (e: any) {
+      } catch (e) {
         setDownloads((prev) => ({
           ...prev,
           [modId]: {

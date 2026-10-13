@@ -16,10 +16,10 @@ export function PatchCard({
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer hover:border-emerald-500/50 hover:bg-accent/30 transition-colors group"
+      className="cursor-pointer hover:ring-brand/40 hover:bg-accent/30 transition-all group"
     >
       <CardContent className="flex items-center gap-4 py-5">
-        <div className="flex items-center justify-center size-12 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+        <div className="flex items-center justify-center size-12 rounded-lg bg-brand/15 text-brand shrink-0">
           {icon}
         </div>
         <div className="flex-1 min-w-0">
@@ -28,7 +28,7 @@ export function PatchCard({
             {description}
           </p>
         </div>
-        <ChevronRight className="size-5 text-muted-foreground group-hover:text-emerald-400 transition-colors shrink-0" />
+        <ChevronRight className="size-5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
       </CardContent>
     </Card>
   );

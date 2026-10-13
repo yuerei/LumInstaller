@@ -42,20 +42,33 @@ function App() {
       {/* Sidebar */}
       <aside className="w-60 shrink-0 border-r border-border bg-sidebar flex flex-col">
         <div className="px-5 py-5 border-b border-border">
-          <h1 className="text-xl font-bold text-emerald-400 tracking-tight">
-            LumInstaller
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Mod & menu installer
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-brand/15 text-brand shrink-0">
+              <Package className="size-4.5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-foreground tracking-tight leading-none">
+                LumInstaller
+              </h1>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-none">
+                Mod &amp; menu installer
+              </p>
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
+          <p className="px-3 pb-1.5 pt-1 font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Library
+          </p>
           <NavItem
             icon={<Package className="size-4" />}
             label="Catalog"
             active={active === "catalog"}
-            onClick={() => setActive("catalog")}
+            onClick={() => {
+              setActive("catalog");
+              setSelectedGame(null);
+            }}
           />
           <NavItem
             icon={<Wrench className="size-4" />}
@@ -67,6 +80,9 @@ function App() {
               setSelectedPatch(null);
             }}
           />
+          <p className="px-3 pb-1.5 pt-3 font-mono text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Configure
+          </p>
           <NavItem
             icon={<Settings className="size-4" />}
             label="Settings"
@@ -79,7 +95,7 @@ function App() {
           />
         </nav>
 
-        <div className="p-3 border-t border-border text-xs text-muted-foreground">
+        <div className="p-4 border-t border-border text-[11px] text-muted-foreground">
           v0.1.0
         </div>
       </aside>
@@ -133,8 +149,11 @@ function App() {
                 </button>
 
                 <div className="flex items-center gap-2 mb-4">
-                  <Gamepad2 className="size-5 text-emerald-400" />
+                  <Gamepad2 className="size-5 text-brand" />
                   <h3 className="text-xl font-semibold">{selectedGame}</h3>
+                  <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
+                    {groupedCatalog[selectedGame].length}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -207,9 +226,9 @@ function NavItem({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+      className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
         active
-          ? "bg-accent text-accent-foreground"
+          ? "bg-brand/15 text-brand"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
       }`}
     >

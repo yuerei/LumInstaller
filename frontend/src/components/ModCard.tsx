@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatSpeed, formatEta } from "@/lib/format";
+import { Stat } from "@/components/Stat";
+import { formatSpeed, formatEta, formatBytes } from "@/lib/format";
 import type { DownloadState } from "@/hooks/useDownloads";
 
 export interface Mod {
@@ -44,7 +45,7 @@ export function ModCard({
   const error = status === "error";
 
   return (
-    <Card className="flex flex-col hover:border-emerald-500/50 transition-colors">
+    <Card className="flex flex-col hover:ring-brand/40 transition-all">
       <CardHeader>
         <CardTitle className="text-base">{mod.name}</CardTitle>
         <CardDescription className="line-clamp-2">
@@ -59,14 +60,31 @@ export function ModCard({
         </div>
 
         {downloading && (
-          <div className="space-y-1.5">
-            <Progress value={state?.percent ?? 0} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
-              <span>{(state?.percent ?? 0).toFixed(0)}%</span>
-              <span>{formatSpeed(state?.speedBps ?? 0)}</span>
-              <span>{formatEta(state?.etaSeconds ?? 0)} left</span>
+          <div className="space-y-2.5">
+            <Progress value={state?.percent ?? 0} className="h-1.5" />
+            <div className="grid grid-cols-3 gap-2">
+              <Stat
+                label="Progress"
+                value={`${(state?.percent ?? 0).toFixed(0)}%`}
+                valueClassName="text-brand"
+              />
+              <Stat label="Speed" value={formatSpeed(state?.speedBps ?? 0)} />
+              <Stat label="ETA" value={formatEta(state?.etaSeconds ?? 0)} />
             </div>
+            {(state?.total ?? 0) > 0 && (
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                {formatBytes(state?.downloaded ?? 0)} of{" "}
+                {formatBytes(state?.total ?? 0)}
+              </p>
+            )}
           </div>
+        )}
+
+        {done && (
+          <p className="flex items-center gap-1.5 text-xs text-brand">
+            <Check className="size-3.5" />
+            Download complete
+          </p>
         )}
 
         {error && (
@@ -88,7 +106,7 @@ export function ModCard({
           className="w-full"
           size="sm"
           disabled={downloading || !folderSet}
-          variant={done ? "outline" : "default"}
+          variant={done ? "outline" : "brand"}
           onClick={onInstall}
         >
           {downloading ? (
@@ -97,7 +115,7 @@ export function ModCard({
             </>
           ) : done ? (
             <>
-              <Check className="size-4 mr-1 text-emerald-400" /> Installed
+              <Check className="size-4 mr-1 text-brand" /> Installed
             </>
           ) : error ? (
             <>

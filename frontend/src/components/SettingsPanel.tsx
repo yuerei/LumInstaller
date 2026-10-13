@@ -32,7 +32,7 @@ export function SettingsPanel({
         return (
           <Card key={game}>
             <CardContent className="flex items-center gap-4 py-4">
-              <div className="flex items-center justify-center size-10 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+              <div className="flex items-center justify-center size-10 rounded-lg bg-brand/15 text-brand shrink-0">
                 <Folder className="size-5" />
               </div>
 
@@ -40,7 +40,7 @@ export function SettingsPanel({
                 <h3 className="font-medium">{game}</h3>
                 {path ? (
                   <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                    <Check className="size-3.5 text-emerald-400 shrink-0" />
+                    <Check className="size-3.5 text-brand shrink-0" />
                     {path}
                   </p>
                 ) : (

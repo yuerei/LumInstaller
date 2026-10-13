@@ -70,7 +70,7 @@ export function PrismLauncherPatch() {
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">
-            <div className="flex items-center justify-center size-10 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+            <div className="flex items-center justify-center size-10 rounded-lg bg-brand/15 text-brand shrink-0">
               <Wrench className="size-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -92,7 +92,7 @@ export function PrismLauncherPatch() {
                   Checking installation…
                 </span>
               ) : installed ? (
-                <span className="flex items-center gap-1.5 text-emerald-400">
+                <span className="flex items-center gap-1.5 text-brand">
                   <Check className="size-3.5" />
                   Installed
                 </span>
@@ -164,7 +164,7 @@ export function PrismLauncherPatch() {
                   if (status !== "idle") setStatus("idle");
                 }}
                 placeholder="YOUR-NICKNAME"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/30"
               />
             </div>
 
@@ -176,7 +176,7 @@ export function PrismLauncherPatch() {
             )}
 
             {done && (
-              <p className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <p className="flex items-center gap-1.5 text-xs text-brand">
                 <Check className="size-3.5" />
                 accounts.json patched successfully.
               </p>
@@ -186,7 +186,7 @@ export function PrismLauncherPatch() {
               className="w-full"
               size="sm"
               disabled={patching || username.trim() === ""}
-              variant={done ? "outline" : "default"}
+              variant={done ? "outline" : "brand"}
               onClick={patch}
             >
               {patching ? (
@@ -195,7 +195,7 @@ export function PrismLauncherPatch() {
                 </>
               ) : done ? (
                 <>
-                  <Check className="size-4 mr-1 text-emerald-400" /> Patched
+                  <Check className="size-4 mr-1 text-brand" /> Patched
                 </>
               ) : (
                 <>
