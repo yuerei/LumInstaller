@@ -1,11 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Download,
-  Settings,
-  Gamepad2,
-  Package,
-  ChevronLeft,
-} from "lucide-react";
+import { Settings, Gamepad2, Package, ChevronLeft, Wrench } from "lucide-react";
 import { GameCard } from "@/components/GameCard";
 import { ModCard } from "@/components/ModCard";
 import { SettingsPanel } from "@/components/SettingsPanel";
@@ -16,7 +10,9 @@ import { useDownloads } from "@/hooks/useDownloads";
 import { mockCatalog } from "@/data/catalog";
 
 function App() {
-  const [active, setActive] = useState<"catalog" | "settings">("catalog");
+  const [active, setActive] = useState<"catalog" | "patch" | "settings">(
+    "catalog",
+  );
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   const groupedCatalog = useMemo(() => {
@@ -53,10 +49,22 @@ function App() {
             onClick={() => setActive("catalog")}
           />
           <NavItem
+            icon={<Wrench className="size-4" />}
+            label="Patch"
+            active={active === "patch"}
+            onClick={() => {
+              setActive("patch");
+              setSelectedGame(null);
+            }}
+          />
+          <NavItem
             icon={<Settings className="size-4" />}
             label="Settings"
             active={active === "settings"}
-            onClick={() => setActive("settings")}
+            onClick={() => {
+              setActive("settings");
+              setSelectedGame(null);
+            }}
           />
         </nav>
 
@@ -69,12 +77,18 @@ function App() {
       <main className="flex-1 overflow-y-auto">
         <header className="px-8 py-6 border-b border-border">
           <h2 className="text-2xl font-semibold">
-            {active === "catalog" ? "Catalog" : "Settings"}
+            {active === "catalog"
+              ? "Catalog"
+              : active === "patch"
+                ? "Patch"
+                : "Settings"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {active === "catalog"
               ? "Browse and install mods and menus"
-              : "Configure download folders per game"}
+              : active === "patch"
+                ? "Apply patches to your games"
+                : "Configure download folders per game"}
           </p>
         </header>
 
@@ -123,6 +137,12 @@ function App() {
                 </div>
               </div>
             )
+          ) : active === "patch" ? (
+            // ---- Patch (placeholder) ----
+            <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+              <Wrench className="size-10 mb-4 opacity-40" />
+              <p className="text-sm">Patch tools coming soon.</p>
+            </div>
           ) : (
             <SettingsPanel
               games={gameList}
