@@ -35,6 +35,18 @@ export interface Catalog {
 export const SUPPORTED_CATALOG_VERSION = 1;
 
 /**
+ * True when a mod entry is a Minecraft modpack zip that should be installed as
+ * a PrismLauncher instance (requires a target Minecraft version).
+ */
+export function isMinecraftPack(mod: Mod): boolean {
+  return (
+    mod.game.toLowerCase() === "minecraft" &&
+    Boolean(mod.minecraft) &&
+    mod.filename.toLowerCase().endsWith(".zip")
+  );
+}
+
+/**
  * Bundled fallback used only if the remote fetch fails AND there is no cached
  * copy on disk (e.g. first launch while offline). Keep this minimal.
  */

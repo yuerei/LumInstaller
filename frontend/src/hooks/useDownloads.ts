@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { Download, InstallMinecraftPack } from "../../wailsjs/go/main/App";
-import type { Mod } from "@/data/catalog";
+import { type Mod, isMinecraftPack } from "@/data/catalog";
 
 export interface DownloadState {
   status: "idle" | "downloading" | "extracting" | "done" | "error";
@@ -44,15 +44,6 @@ const initial: DownloadState = {
   speedBps: 0,
   etaSeconds: 0,
 };
-
-/** True when a mod entry is a Minecraft modpack that needs instance install. */
-function isMinecraftPack(mod: Mod): boolean {
-  return (
-    mod.game.toLowerCase() === "minecraft" &&
-    Boolean(mod.minecraft) &&
-    mod.filename.toLowerCase().endsWith(".zip")
-  );
-}
 
 export function useDownloads() {
   const [downloads, setDownloads] = useState<Record<string, DownloadState>>({});

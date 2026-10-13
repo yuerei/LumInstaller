@@ -72,7 +72,7 @@ function App() {
                 LumInstaller
               </h1>
               <p className="text-[11px] text-muted-foreground mt-1 leading-none">
-                Mod &amp; menu installer
+                Mod &amp; patch installer
               </p>
             </div>
           </div>

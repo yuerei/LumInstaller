@@ -18,7 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Stat } from "@/components/Stat";
 import { formatSpeed, formatEta, formatBytes } from "@/lib/format";
 import type { DownloadState } from "@/hooks/useDownloads";
-import type { Mod } from "@/data/catalog";
+import { type Mod, isMinecraftPack } from "@/data/catalog";
 
 export function ModCard({
   mod,
@@ -37,10 +37,7 @@ export function ModCard({
   const done = status === "done";
   const error = status === "error";
   const busy = downloading || extracting;
-  const isPack =
-    mod.game.toLowerCase() === "minecraft" &&
-    Boolean(mod.minecraft) &&
-    mod.filename.toLowerCase().endsWith(".zip");
+  const isPack = isMinecraftPack(mod);
 
   return (
     <Card className="flex flex-col hover:ring-brand/40 transition-all">
