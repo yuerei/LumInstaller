@@ -8,6 +8,11 @@ import {
 } from "lucide-react";
 import { GameCard } from "@/components/GameCard";
 import { ModCard } from "@/components/ModCard";
+import { SettingsPanel } from "@/components/SettingsPanel";
+
+import { useGameFolders } from "@/hooks/useGameFolders";
+import { useDownloads } from "@/hooks/useDownloads";
+
 import { mockCatalog } from "@/data/catalog";
 
 function App() {
@@ -21,6 +26,11 @@ function App() {
     }
     return groups;
   }, []);
+
+  const { folders, setFolder } = useGameFolders();
+  const { downloads, start } = useDownloads();
+
+  const gameList = useMemo(() => Object.keys(groupedCatalog), [groupedCatalog]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -100,13 +110,25 @@ function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {groupedCatalog[selectedGame].map((mod) => (
-                    <ModCard key={mod.id} mod={mod} />
+                    <ModCard
+                      key={mod.id}
+                      mod={mod}
+                      state={downloads[mod.id]}
+                      folderSet={Boolean(folders[mod.game])}
+                      onInstall={() =>
+                        start(mod.id, mod.url, folders[mod.game])
+                      }
+                    />
                   ))}
                 </div>
               </div>
             )
           ) : (
-            <p className="text-muted-foreground">Settings go here.</p>
+            <SettingsPanel
+              games={gameList}
+              folders={folders}
+              onSetFolder={setFolder}
+            />
           )}
         </div>
       </main>

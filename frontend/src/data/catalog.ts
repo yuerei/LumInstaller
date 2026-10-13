@@ -16,7 +16,7 @@ export const mockCatalog: Mod[] = [
     game: "GTA V",
     description: "In-game menu for spawning vehicles, teleporting, and more.",
     size: "48 MB",
-    url: "https://example.com/mods/gtav-trainer.zip",
+    url: "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/jquery-speedtest/100MB.txt",
   },
   {
     id: "3",
