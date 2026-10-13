@@ -15,10 +15,12 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:  "LumInstaller",
-		Width:  1024,
-		Height: 768,
-		OnStartup: app.startup,
+		Title:         "LumInstaller",
+		Width:         1024,
+		Height:        768,
+		Fullscreen:    false,
+		DisableResize: true,
+		OnStartup:     app.startup,
 		Bind: []interface{}{
 			app,
 		},

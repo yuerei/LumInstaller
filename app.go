@@ -65,7 +65,18 @@ func (a *App) Download(modID, url, destFolder string) error {
 	}
 	destPath := filepath.Join(destFolder, name)
 
-	resp, err := http.Get(url)
+	client := &http.Client{
+		// A generous overall timeout guards against a server that accepts the
+		// connection then stalls indefinitely. Large files are still fine.
+		Timeout: 30 * time.Minute,
+	}
+
+	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
