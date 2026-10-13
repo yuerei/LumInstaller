@@ -18,15 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Stat } from "@/components/Stat";
 import { formatSpeed, formatEta, formatBytes } from "@/lib/format";
 import type { DownloadState } from "@/hooks/useDownloads";
-
-export interface Mod {
-  id: string;
-  name: string;
-  game: string;
-  description: string;
-  size: string;
-  url: string;
-}
+import type { Mod } from "@/data/catalog";
 
 export function ModCard({
   mod,
@@ -41,8 +33,14 @@ export function ModCard({
 }) {
   const status = state?.status ?? "idle";
   const downloading = status === "downloading";
+  const extracting = status === "extracting";
   const done = status === "done";
   const error = status === "error";
+  const busy = downloading || extracting;
+  const isPack =
+    mod.game.toLowerCase() === "minecraft" &&
+    Boolean(mod.minecraft) &&
+    mod.filename.toLowerCase().endsWith(".zip");
 
   return (
     <Card className="flex flex-col hover:ring-brand/40 transition-all">
@@ -56,7 +54,7 @@ export function ModCard({
       <CardContent className="flex-1 space-y-3">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <HardDrive className="size-3.5" />
-          {mod.size}
+          {mod.size > 0 ? formatBytes(mod.size) : "Unknown size"}
         </div>
 
         {downloading && (
@@ -80,10 +78,20 @@ export function ModCard({
           </div>
         )}
 
+        {extracting && (
+          <div className="space-y-2">
+            <Progress value={state?.percent ?? 0} className="h-1.5" />
+            <p className="flex items-center gap-1.5 text-xs text-brand">
+              <Loader2 className="size-3.5 animate-spin" />
+              {state?.message ?? "Installing instance…"}
+            </p>
+          </div>
+        )}
+
         {done && (
           <p className="flex items-center gap-1.5 text-xs text-brand">
             <Check className="size-3.5" />
-            Download complete
+            {isPack ? "Instance ready" : "Download complete"}
           </p>
         )}
 
@@ -94,7 +102,7 @@ export function ModCard({
           </p>
         )}
 
-        {!folderSet && !downloading && (
+        {!folderSet && !busy && (
           <p className="text-xs text-amber-400/80">
             Set this game's folder in Settings first.
           </p>
@@ -105,11 +113,15 @@ export function ModCard({
         <Button
           className="w-full"
           size="sm"
-          disabled={downloading || !folderSet}
+          disabled={busy || done || !folderSet}
           variant={done ? "outline" : "brand"}
           onClick={onInstall}
         >
           {downloading ? (
+            <>
+              <Loader2 className="size-4 mr-1 animate-spin" /> Downloading…
+            </>
+          ) : extracting ? (
             <>
               <Loader2 className="size-4 mr-1 animate-spin" /> Installing…
             </>

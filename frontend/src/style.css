@@ -135,6 +135,18 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* App-like behavior: disable text selection by default. */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    }
+  /* Keep selection/caret in editable fields. */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
     }
   html {
     @apply font-sans;

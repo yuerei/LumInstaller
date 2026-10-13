@@ -1,15 +1,28 @@
 import { useState, useMemo } from "react";
-import { Settings, Gamepad2, Package, ChevronLeft, Wrench } from "lucide-react";
+import {
+  Settings,
+  Gamepad2,
+  Package,
+  ChevronLeft,
+  Wrench,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { GameCard } from "@/components/GameCard";
 import { ModCard } from "@/components/ModCard";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { PatchCard } from "@/components/PatchCard";
+import { Button } from "@/components/ui/button";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 import { useGameFolders } from "@/hooks/useGameFolders";
 import { useDownloads } from "@/hooks/useDownloads";
+import { useCatalog } from "@/hooks/useCatalog";
+import { useUpdate } from "@/hooks/useUpdate";
 
-import { mockCatalog } from "@/data/catalog";
 import { patches } from "@/data/patches";
+import type { Mod } from "@/data/catalog";
 
 function App() {
   const [active, setActive] = useState<"catalog" | "patch" | "settings">(
@@ -18,18 +31,26 @@ function App() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [selectedPatch, setSelectedPatch] = useState<string | null>(null);
 
+  const {
+    catalog,
+    status: catalogStatus,
+    error: catalogError,
+    reload: reloadCatalog,
+  } = useCatalog();
+
   const groupedCatalog = useMemo(() => {
-    const groups: Record<string, typeof mockCatalog> = {};
-    for (const mod of mockCatalog) {
+    const groups: Record<string, Mod[]> = {};
+    for (const mod of catalog.mods) {
       (groups[mod.game] ??= []).push(mod);
     }
     return groups;
-  }, []);
-
-  const { folders, setFolder } = useGameFolders();
-  const { downloads, start } = useDownloads();
+  }, [catalog]);
 
   const gameList = useMemo(() => Object.keys(groupedCatalog), [groupedCatalog]);
+
+  const { folders, setFolder } = useGameFolders(gameList);
+  const { downloads, start } = useDownloads();
+  const { version, update, dismiss } = useUpdate();
 
   const activePatch = useMemo(
     () => patches.find((p) => p.id === selectedPatch) ?? null,
@@ -96,12 +117,13 @@ function App() {
         </nav>
 
         <div className="p-4 border-t border-border text-[11px] text-muted-foreground">
-          v0.1.0
+          v{version || "0.1.0"}
         </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        {update && <UpdateBanner update={update} onDismiss={dismiss} />}
         <header className="px-8 py-6 border-b border-border">
           <h2 className="text-2xl font-semibold">
             {active === "catalog"
@@ -125,7 +147,46 @@ function App() {
 
         <div className="p-8">
           {active === "catalog" ? (
-            selectedGame === null ? (
+            catalogStatus === "loading" ? (
+              // ---- Loading ----
+              <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+                <Loader2 className="size-7 mb-3 animate-spin text-brand" />
+                <p className="text-sm">Loading catalog…</p>
+              </div>
+            ) : catalogStatus === "error" && catalog.mods.length === 0 ? (
+              // ---- Error (and nothing cached to show) ----
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <AlertCircle className="size-8 mb-3 text-amber-400/80" />
+                <p className="text-sm font-medium">Couldn't load the catalog</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                  {catalogError ?? "Check your connection and try again."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={reloadCatalog}
+                >
+                  <RefreshCw className="size-4 mr-1" />
+                  Retry
+                </Button>
+              </div>
+            ) : catalog.mods.length === 0 ? (
+              // ---- Empty ----
+              <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+                <Package className="size-8 mb-3 opacity-40" />
+                <p className="text-sm">The catalog is empty right now.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={reloadCatalog}
+                >
+                  <RefreshCw className="size-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
+            ) : selectedGame === null ? (
               // ---- Game grid ----
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(groupedCatalog).map(([game, mods]) => (
@@ -152,20 +213,18 @@ function App() {
                   <Gamepad2 className="size-5 text-brand" />
                   <h3 className="text-xl font-semibold">{selectedGame}</h3>
                   <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
-                    {groupedCatalog[selectedGame].length}
+                    {groupedCatalog[selectedGame]?.length ?? 0}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupedCatalog[selectedGame].map((mod) => (
+                  {(groupedCatalog[selectedGame] ?? []).map((mod) => (
                     <ModCard
                       key={mod.id}
                       mod={mod}
                       state={downloads[mod.id]}
                       folderSet={Boolean(folders[mod.game])}
-                      onInstall={() =>
-                        start(mod.id, mod.url, folders[mod.game])
-                      }
+                      onInstall={() => start(mod, folders[mod.game])}
                     />
                   ))}
                 </div>
