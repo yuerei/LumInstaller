@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
-import { Blocks } from "lucide-react";
+import { Blocks, Gamepad2 } from "lucide-react";
 import { MinecraftPatch } from "@/components/MinecraftPatch";
+import { SteamPatch } from "@/components/SteamPatch";
 
 export interface PatchDef {
   /** Stable id used for routing/selection. */
@@ -23,5 +24,12 @@ export const patches: PatchDef[] = [
     description: "Install a launcher and patch an offline account.",
     icon: <Blocks className="size-6" />,
     page: MinecraftPatch,
+  },
+  {
+    id: "steam",
+    title: "Steam",
+    description: "Patches family limitation.",
+    icon: <Gamepad2 className="size-6" />,
+    page: SteamPatch,
   },
 ];
