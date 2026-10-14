@@ -72,12 +72,13 @@ func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, forg
 		return fmt.Errorf("minecraft version is required")
 	}
 
-	prism, err := prismDir()
-	if err != nil {
-		return err
-	}
+	// The zip was downloaded into the user's chosen Minecraft folder, which is
+	// a launcher's "instances" directory (PrismLauncher or Ely PrismLauncher).
+	// Create the instance alongside the zip so we honor whichever launcher the
+	// user picked, rather than assuming PrismLauncher.
+	instancesRoot := filepath.Dir(zipPath)
 
-	instanceDir := filepath.Join(prism, "instances", instanceName)
+	instanceDir := filepath.Join(instancesRoot, instanceName)
 	mcDir := filepath.Join(instanceDir, ".minecraft")
 	if err := os.MkdirAll(mcDir, 0o755); err != nil {
 		return fmt.Errorf("cannot create instance folder: %w", err)

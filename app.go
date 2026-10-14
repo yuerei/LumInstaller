@@ -43,19 +43,36 @@ func (a *App) ChooseFolder() (string, error) {
 // game, creating it if necessary. Returns an empty string if there is no known
 // default for the game (the caller should then prompt the user).
 //
-// Minecraft defaults to the PrismLauncher instances folder.
+// For Minecraft it uses a launcher's "instances" folder under %APPDATA%,
+// preferring one that already exists (Ely PrismLauncher, then PrismLauncher).
+// If neither is installed yet, it falls back to PrismLauncher's path.
 func (a *App) DefaultGameFolder(game string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(game)) {
 	case "minecraft":
-		dir, err := prismDir()
-		if err != nil {
-			return "", err
+		base := os.Getenv("APPDATA")
+		if base == "" {
+			return "", fmt.Errorf("APPDATA environment variable not set")
 		}
-		instances := filepath.Join(dir, "instances")
-		if err := os.MkdirAll(instances, 0o755); err != nil {
+
+		// Candidate launcher instances folders, in order of preference.
+		candidates := []string{
+			filepath.Join(base, "ElyPrismLauncher", "instances"),
+			filepath.Join(base, "PrismLauncher", "instances"),
+		}
+
+		// Prefer a folder that already exists.
+		for _, c := range candidates {
+			if info, err := os.Stat(c); err == nil && info.IsDir() {
+				return c, nil
+			}
+		}
+
+		// None exist yet: fall back to PrismLauncher and create it.
+		fallback := candidates[len(candidates)-1]
+		if err := os.MkdirAll(fallback, 0o755); err != nil {
 			return "", fmt.Errorf("cannot create instances folder: %w", err)
 		}
-		return instances, nil
+		return fallback, nil
 	default:
 		return "", nil
 	}
