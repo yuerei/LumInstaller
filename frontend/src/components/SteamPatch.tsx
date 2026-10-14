@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Wrench,
+  Gamepad2,
   Check,
   Loader2,
   AlertCircle,
@@ -130,7 +130,7 @@ export function SteamPatch() {
         <CardHeader>
           <div className="flex items-start gap-3">
             <div className="flex items-center justify-center size-10 rounded-lg bg-brand/15 text-brand shrink-0">
-              <Wrench className="size-5" />
+              <Gamepad2 className="size-5" />
             </div>
             <div className="flex-1 min-w-0">
               <CardTitle className="text-base">Steam</CardTitle>
@@ -161,8 +161,13 @@ export function SteamPatch() {
             </div>
           </div>
 
-          {/* Steam-running warning */}
-          {running ? (
+          {/* Steam-running status */}
+          {running === null ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" />
+              Checking Steam status…
+            </p>
+          ) : running ? (
             <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-300">
               <TriangleAlert className="size-4 shrink-0 mt-0.5" />
               <div className="flex-1">
@@ -212,23 +217,29 @@ export function SteamPatch() {
           )}
 
           {status === "error" && (
-            <p className="flex items-start gap-1.5 text-xs text-red-400">
-              <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
-              {error ?? "Patch failed"}
-            </p>
-          )}
-
-          {needsAdmin && (
-            <Button variant="outline" size="sm" onClick={restartAsAdmin}>
-              <ShieldAlert className="size-4 mr-1" />
-              Restart as administrator
-            </Button>
+            <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 space-y-2">
+              <p className="flex items-start gap-1.5 text-xs text-red-400">
+                <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+                {error ?? "Patch failed"}
+              </p>
+              {needsAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={restartAsAdmin}
+                >
+                  <ShieldAlert className="size-4 mr-1" />
+                  Restart as administrator
+                </Button>
+              )}
+            </div>
           )}
 
           <Button
             className="w-full"
             size="sm"
-            disabled={working || done || running === true}
+            disabled={working || done || running !== false}
             variant={done ? "outline" : "brand"}
             onClick={apply}
           >
@@ -242,7 +253,7 @@ export function SteamPatch() {
               </>
             ) : (
               <>
-                <Wrench className="size-4 mr-1" /> Patch Steam
+                <Gamepad2 className="size-4 mr-1" /> Patch Steam
               </>
             )}
           </Button>

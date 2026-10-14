@@ -20,8 +20,9 @@ const defaultSteamPath = `C:\Program Files (x86)\Steam`
 // once and then delete.
 const cacheCleanerExe = "DeleteSteamAppCache.exe"
 
-// DetectSteamPath returns Steam's install directory, preferring the registry
-// value and falling back to the default path if it exists.
+// DetectSteamPath returns Steam's install directory. It prefers the registry
+// value, then the standard Program Files location, and finally returns the
+// default path even if it does not exist so the UI always has a value to show.
 func (a *App) DetectSteamPath() string {
 	if p := steamPathFromRegistry(); p != "" {
 		if info, err := os.Stat(p); err == nil && info.IsDir() {
@@ -81,10 +82,9 @@ func (a *App) CloseSteam() error {
 }
 
 // IsElevated reports whether the current process is running with administrator
-// privileges. It probes by attempting to open a handle that only admins can.
+// privileges, by running `net session` which only succeeds when elevated.
 func (a *App) IsElevated() bool {
-	// `net session` succeeds only for elevated processes; it's a cheap check
-	// that avoids pulling in extra Windows API dependencies.
+	// This avoids pulling in extra Windows API dependencies for a cheap check.
 	return hiddenCommand("net", "session").Run() == nil
 }
 
@@ -98,10 +98,13 @@ func (a *App) RelaunchAsAdmin() error {
 		return fmt.Errorf("cannot locate executable: %w", err)
 	}
 
-	// Start-Process -Verb RunAs triggers the UAC prompt. If the user declines,
+	// Start-Process -Verb RunAs triggers the UAC prompt. The path is wrapped in
+	// a PowerShell single-quoted string; any embedded single quote is escaped by
+	// doubling it (PowerShell's single-quote escape rule). If the user declines,
 	// PowerShell exits non-zero and we surface that as an error.
+	psPath := strings.ReplaceAll(exePath, "'", "''")
 	cmd := hiddenCommand("powershell", "-NoProfile", "-Command",
-		"Start-Process", "-FilePath", fmt.Sprintf("'%s'", exePath), "-Verb", "RunAs")
+		fmt.Sprintf("Start-Process -FilePath '%s' -Verb RunAs", psPath))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("elevation was cancelled or failed")
 	}
@@ -115,9 +118,9 @@ func (a *App) RelaunchAsAdmin() error {
 // the bundled cache cleaner, then deletes the cleaner. steamPath may be empty,
 // in which case the detected/default path is used.
 //
-// It refuses to run while Steam is open. Writing into Program Files requires
-// the app to run with administrator rights; a permission failure surfaces a
-// clear error.
+// It refuses to run while Steam is open. It writes only if the target folder is
+// writable; if a write would require administrator rights it returns a
+// NEEDS_ADMIN error so the UI can offer to relaunch elevated.
 func (a *App) ApplySteamPatch(steamPath string) error {
 	steamPath = strings.TrimSpace(steamPath)
 	if steamPath == "" {
