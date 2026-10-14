@@ -14,6 +14,10 @@ export function ChooseFolder() {
   return window['go']['main']['App']['ChooseFolder']();
 }
 
+export function CloseSteam() {
+  return window['go']['main']['App']['CloseSteam']();
+}
+
 export function DefaultGameFolder(arg1) {
   return window['go']['main']['App']['DefaultGameFolder'](arg1);
 }
@@ -34,6 +38,10 @@ export function InstallMinecraftPack(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['InstallMinecraftPack'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function IsElevated() {
+  return window['go']['main']['App']['IsElevated']();
+}
+
 export function IsPrismLauncherInstalled() {
   return window['go']['main']['App']['IsPrismLauncherInstalled']();
 }
@@ -44,6 +52,10 @@ export function IsSteamRunning() {
 
 export function PatchPrismAccount(arg1) {
   return window['go']['main']['App']['PatchPrismAccount'](arg1);
+}
+
+export function RelaunchAsAdmin() {
+  return window['go']['main']['App']['RelaunchAsAdmin']();
 }
 
 export function Version() {

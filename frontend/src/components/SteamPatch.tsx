@@ -7,6 +7,7 @@ import {
   FolderOpen,
   RefreshCw,
   TriangleAlert,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Card,
@@ -22,6 +23,8 @@ import {
   DetectSteamPath,
   IsSteamRunning,
   ChooseFolder,
+  CloseSteam,
+  RelaunchAsAdmin,
 } from "../../wailsjs/go/main/App";
 
 type Status = "idle" | "working" | "done" | "error";
@@ -37,6 +40,8 @@ export function SteamPatch() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsAdmin, setNeedsAdmin] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   async function refresh() {
     try {
@@ -71,12 +76,19 @@ export function SteamPatch() {
   async function apply() {
     setStatus("working");
     setError(null);
+    setNeedsAdmin(false);
     setMessage("Starting…");
     try {
       await ApplySteamPatch(steamPath);
       setStatus("done");
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      const msg = String(e instanceof Error ? e.message : e);
+      if (msg.includes("NEEDS_ADMIN")) {
+        setNeedsAdmin(true);
+        setError("Administrator rights are required to patch Steam.");
+      } else {
+        setError(msg);
+      }
       setStatus("error");
     } finally {
       // Re-check running state after the attempt.
@@ -85,6 +97,27 @@ export function SteamPatch() {
       } catch {
         /* ignore */
       }
+    }
+  }
+
+  async function closeSteam() {
+    setClosing(true);
+    try {
+      await CloseSteam();
+      setRunning(await IsSteamRunning());
+    } catch (e) {
+      console.error("close steam failed", e);
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  async function restartAsAdmin() {
+    try {
+      await RelaunchAsAdmin();
+      // On success the app quits and relaunches elevated; nothing more to do.
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
     }
   }
 
@@ -135,9 +168,27 @@ export function SteamPatch() {
               <div className="flex-1">
                 Steam is currently running. Close it completely before patching.
               </div>
-              <Button variant="ghost" size="icon-sm" onClick={refresh} title="Re-check">
-                <RefreshCw className="size-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={closeSteam}
+                  disabled={closing}
+                >
+                  {closing ? (
+                    <Loader2 className="size-3.5 mr-1 animate-spin" />
+                  ) : null}
+                  Close Steam for me
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={refresh}
+                  title="Re-check"
+                >
+                  <RefreshCw className="size-3.5" />
+                </Button>
+              </div>
             </div>
           ) : (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -165,6 +216,13 @@ export function SteamPatch() {
               <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
               {error ?? "Patch failed"}
             </p>
+          )}
+
+          {needsAdmin && (
+            <Button variant="outline" size="sm" onClick={restartAsAdmin}>
+              <ShieldAlert className="size-4 mr-1" />
+              Restart as administrator
+            </Button>
           )}
 
           <Button

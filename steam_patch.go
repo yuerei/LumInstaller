@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -39,7 +38,7 @@ func (a *App) DetectSteamPath() string {
 // steamPathFromRegistry reads HKCU\Software\Valve\Steam\SteamPath via `reg query`.
 // Returns an empty string if unavailable (keeps this file free of extra deps).
 func steamPathFromRegistry() string {
-	out, err := exec.Command("reg", "query", `HKCU\Software\Valve\Steam`, "/v", "SteamPath").Output()
+	out, err := hiddenCommand("reg", "query", `HKCU\Software\Valve\Steam`, "/v", "SteamPath").Output()
 	if err != nil {
 		return ""
 	}
@@ -58,11 +57,58 @@ func steamPathFromRegistry() string {
 
 // IsSteamRunning reports whether a steam.exe process is currently running.
 func (a *App) IsSteamRunning() bool {
-	out, err := exec.Command("tasklist", "/FI", "IMAGENAME eq steam.exe", "/NH").Output()
+	out, err := hiddenCommand("tasklist", "/FI", "IMAGENAME eq steam.exe", "/NH").Output()
 	if err != nil {
 		return false
 	}
 	return strings.Contains(strings.ToLower(string(out)), "steam.exe")
+}
+
+// CloseSteam terminates steam.exe (and its child processes). It is a no-op if
+// Steam is not running. Steam itself is designed to be killed safely.
+func (a *App) CloseSteam() error {
+	if !a.IsSteamRunning() {
+		return nil
+	}
+	// /T kills child processes too; /F forces termination.
+	err := hiddenCommand("taskkill", "/IM", "steam.exe", "/T", "/F").Run()
+	if err != nil {
+		return fmt.Errorf("could not close Steam: %w", err)
+	}
+	// Give the OS a moment to release file handles before any patching.
+	time.Sleep(500 * time.Millisecond)
+	return nil
+}
+
+// IsElevated reports whether the current process is running with administrator
+// privileges. It probes by attempting to open a handle that only admins can.
+func (a *App) IsElevated() bool {
+	// `net session` succeeds only for elevated processes; it's a cheap check
+	// that avoids pulling in extra Windows API dependencies.
+	return hiddenCommand("net", "session").Run() == nil
+}
+
+// RelaunchAsAdmin restarts the application with a UAC elevation prompt, then
+// signals the current (non-elevated) instance to quit. Returns an error if the
+// user declines the prompt or the relaunch fails (the current instance keeps
+// running in that case).
+func (a *App) RelaunchAsAdmin() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot locate executable: %w", err)
+	}
+
+	// Start-Process -Verb RunAs triggers the UAC prompt. If the user declines,
+	// PowerShell exits non-zero and we surface that as an error.
+	cmd := hiddenCommand("powershell", "-NoProfile", "-Command",
+		"Start-Process", "-FilePath", fmt.Sprintf("'%s'", exePath), "-Verb", "RunAs")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("elevation was cancelled or failed")
+	}
+
+	// Elevated instance launched — quit this one so there aren't two windows.
+	runtime.Quit(a.ctx)
+	return nil
 }
 
 // ApplySteamPatch downloads SteamPatch.zip, extracts it into steamPath, runs
@@ -86,6 +132,16 @@ func (a *App) ApplySteamPatch(steamPath string) error {
 		return fmt.Errorf("Steam is still running — please close Steam completely and try again")
 	}
 
+	// Only elevation-gate if we actually can't write to the Steam folder. Many
+	// installs live outside Program Files and need no admin rights at all, so we
+	// probe first and prompt for UAC only when the probe fails with permission.
+	if err := canWriteDir(steamPath); err != nil {
+		if os.IsPermission(err) {
+			return fmt.Errorf("NEEDS_ADMIN: administrator rights are required to patch %q", steamPath)
+		}
+		return fmt.Errorf("cannot write to Steam folder: %w", err)
+	}
+
 	a.emitSteam(false, "Downloading patch…")
 
 	// Download the patch zip into the OS temp dir.
@@ -98,7 +154,7 @@ func (a *App) ApplySteamPatch(steamPath string) error {
 	a.emitSteam(false, "Extracting into Steam folder…")
 	if err := a.extractZip("steam", tmpZip, steamPath); err != nil {
 		if os.IsPermission(err) {
-			return fmt.Errorf("permission denied writing to %q — run LumInstaller as administrator", steamPath)
+			return fmt.Errorf("NEEDS_ADMIN: administrator rights are required to patch %q", steamPath)
 		}
 		return fmt.Errorf("extracting patch: %w", err)
 	}
@@ -109,7 +165,7 @@ func (a *App) ApplySteamPatch(steamPath string) error {
 	}
 
 	a.emitSteam(false, "Running "+cacheCleanerExe+"…")
-	cmd := exec.Command(cleaner)
+	cmd := hiddenCommand(cleaner)
 	cmd.Dir = steamPath
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running %s: %w", cacheCleanerExe, err)
@@ -143,6 +199,19 @@ func (a *App) downloadTo(url, destPath string) error {
 		}
 	}
 	return nil
+}
+
+// canWriteDir probes whether the current process can create files in dir by
+// writing and removing a temporary file. Returns the underlying error (so
+// callers can use os.IsPermission) or nil if writable.
+func canWriteDir(dir string) error {
+	f, err := os.CreateTemp(dir, ".luminstaller-write-probe-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	f.Close()
+	return os.Remove(name)
 }
 
 // SteamPatchProgress is emitted on "steam:progress" during the patch flow.

@@ -8,6 +8,8 @@ export function CheckForUpdate():Promise<main.UpdateInfo>;
 
 export function ChooseFolder():Promise<string>;
 
+export function CloseSteam():Promise<void>;
+
 export function DefaultGameFolder(arg1:string):Promise<string>;
 
 export function DetectSteamPath():Promise<string>;
@@ -18,10 +20,14 @@ export function FetchCatalog():Promise<string>;
 
 export function InstallMinecraftPack(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
+export function IsElevated():Promise<boolean>;
+
 export function IsPrismLauncherInstalled():Promise<boolean>;
 
 export function IsSteamRunning():Promise<boolean>;
 
 export function PatchPrismAccount(arg1:string):Promise<void>;
+
+export function RelaunchAsAdmin():Promise<void>;
 
 export function Version():Promise<string>;
