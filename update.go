@@ -11,7 +11,7 @@ import (
 
 // AppVersion is the current application version (semver, no leading "v").
 // Keep this in sync with the version shown in the UI and your release tags.
-const AppVersion = "2.0.0"
+const AppVersion = "2.1.0"
 
 // releasesAPIURL is the GitHub API endpoint for the latest published release
 // of the app repository.

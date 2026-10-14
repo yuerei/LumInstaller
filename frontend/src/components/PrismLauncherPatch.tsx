@@ -66,7 +66,7 @@ export function PrismLauncherPatch() {
   const done = status === "done";
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">

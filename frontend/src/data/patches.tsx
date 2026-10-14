@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
-import { Wrench } from "lucide-react";
-import { PrismLauncherPatch } from "@/components/PrismLauncherPatch";
+import { Blocks } from "lucide-react";
+import { MinecraftPatch } from "@/components/MinecraftPatch";
 
 export interface PatchDef {
   /** Stable id used for routing/selection. */
@@ -18,10 +18,10 @@ export interface PatchDef {
 // Add new patches here — each becomes a card on the Patch tab with its own page.
 export const patches: PatchDef[] = [
   {
-    id: "prismlauncher",
-    title: "PrismLauncher",
-    description: "Install PrismLauncher and patch an offline account.",
-    icon: <Wrench className="size-6" />,
-    page: PrismLauncherPatch,
+    id: "minecraft",
+    title: "Minecraft",
+    description: "Install a launcher and patch an offline account.",
+    icon: <Blocks className="size-6" />,
+    page: MinecraftPatch,
   },
 ];
