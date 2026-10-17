@@ -19,8 +19,12 @@ export interface Mod {
   // --- Minecraft modpack install metadata (optional) ---
   /** Minecraft version the pack targets, e.g. "1.12.2". */
   minecraft?: string;
+  /** Mod loader: "forge" (default) or "fabric". */
+  loader?: "forge" | "fabric";
   /** Forge version, e.g. "14.23.5.2860". */
   forge?: string;
+  /** Fabric loader version, e.g. "0.16.9". */
+  fabric?: string;
   /** PrismLauncher instance folder/display name, e.g. "RLCraft". */
   instanceName?: string;
 }
@@ -44,6 +48,11 @@ export function isMinecraftPack(mod: Mod): boolean {
     Boolean(mod.minecraft) &&
     mod.filename.toLowerCase().endsWith(".zip")
   );
+}
+
+/** Human-readable loader name for a modpack ("Forge" is the default). */
+export function loaderLabel(mod: Mod): "Forge" | "Fabric" {
+  return mod.loader === "fabric" ? "Fabric" : "Forge";
 }
 
 /**

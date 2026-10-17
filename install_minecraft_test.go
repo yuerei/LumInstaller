@@ -35,11 +35,11 @@ func TestExtractZip_ExtractsAndStripsServerFiles(t *testing.T) {
 	dir := t.TempDir()
 	zipPath := filepath.Join(dir, "pack.zip")
 	makeZip(t, zipPath, map[string]string{
-		"mods/example.jar":   "jarbytes",
-		"config/foo.cfg":     "cfg",
-		"server.properties":  "should-be-skipped",
-		"eula.txt":           "should-be-skipped",
-		"options.txt":        "keep-me",
+		"mods/example.jar":  "jarbytes",
+		"config/foo.cfg":    "cfg",
+		"server.properties": "should-be-skipped",
+		"eula.txt":          "should-be-skipped",
+		"options.txt":       "keep-me",
 	})
 
 	dest := filepath.Join(dir, ".minecraft")
@@ -84,7 +84,7 @@ func TestExtractZip_RejectsZipSlip(t *testing.T) {
 
 func TestWriteMMCPack_PinsMinecraftAndForge(t *testing.T) {
 	dir := t.TempDir()
-	if err := writeMMCPack(dir, "1.12.2", "14.23.5.2860"); err != nil {
+	if err := writeMMCPack(dir, "1.12.2", "forge", "14.23.5.2860"); err != nil {
 		t.Fatalf("writeMMCPack: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "mmc-pack.json"))
@@ -96,6 +96,58 @@ func TestWriteMMCPack_PinsMinecraftAndForge(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Errorf("mmc-pack.json missing %q; got:\n%s", want, s)
 		}
+	}
+	if strings.Contains(s, "fabric") {
+		t.Errorf("forge pack should not reference fabric; got:\n%s", s)
+	}
+}
+
+func TestWriteMMCPack_PinsFabric(t *testing.T) {
+	dir := t.TempDir()
+	if err := writeMMCPack(dir, "1.20.1", "fabric", "0.16.9"); err != nil {
+		t.Fatalf("writeMMCPack: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "mmc-pack.json"))
+	if err != nil {
+		t.Fatalf("read mmc-pack.json: %v", err)
+	}
+	s := string(data)
+	// Fabric needs loader + intermediary (pinned to MC version), no Forge.
+	for _, want := range []string{
+		"net.minecraft", "1.20.1",
+		"net.fabricmc.fabric-loader", "0.16.9",
+		"net.fabricmc.intermediary",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("mmc-pack.json missing %q; got:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "net.minecraftforge") {
+		t.Errorf("fabric pack should not reference forge; got:\n%s", s)
+	}
+}
+
+func TestWriteMMCPack_DefaultsToForge(t *testing.T) {
+	dir := t.TempDir()
+	// Empty loader string should be treated as forge.
+	if err := writeMMCPack(dir, "1.12.2", "", "14.23.5.2860"); err != nil {
+		t.Fatalf("writeMMCPack: %v", err)
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "mmc-pack.json"))
+	if !strings.Contains(string(data), "net.minecraftforge") {
+		t.Errorf("empty loader should default to forge; got:\n%s", string(data))
+	}
+}
+
+func TestWriteMMCPack_VanillaWhenNoLoaderVersion(t *testing.T) {
+	dir := t.TempDir()
+	if err := writeMMCPack(dir, "1.20.1", "fabric", ""); err != nil {
+		t.Fatalf("writeMMCPack: %v", err)
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "mmc-pack.json"))
+	s := string(data)
+	if strings.Contains(s, "fabric") || strings.Contains(s, "forge") {
+		t.Errorf("no loader version should produce a vanilla pack; got:\n%s", s)
 	}
 }
 

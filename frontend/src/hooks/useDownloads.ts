@@ -109,12 +109,16 @@ export function useDownloads() {
             message: "Preparing instance…",
           },
         }));
+        const loader = mod.loader === "fabric" ? "fabric" : "forge";
+        const loaderVersion =
+          loader === "fabric" ? mod.fabric || "" : mod.forge || "";
         await InstallMinecraftPack(
           mod.id,
           zipPath,
           mod.instanceName || mod.name,
           mod.minecraft || "",
-          mod.forge || "",
+          loader,
+          loaderVersion,
         );
       }
 

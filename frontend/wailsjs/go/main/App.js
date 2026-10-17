@@ -34,8 +34,8 @@ export function FetchCatalog() {
   return window['go']['main']['App']['FetchCatalog']();
 }
 
-export function InstallMinecraftPack(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['InstallMinecraftPack'](arg1, arg2, arg3, arg4, arg5);
+export function InstallMinecraftPack(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['InstallMinecraftPack'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function IsElevated() {

@@ -58,9 +58,10 @@ func isServerOnly(name string) bool {
 //	├── mmc-pack.json        (pins Minecraft + Forge)
 //	└── .minecraft/          (the extracted pack contents)
 //
-// The source zip is deleted on success. mcVersion and forgeVersion pin the
-// instance's components; if forgeVersion is empty, only Minecraft is pinned.
-func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, forgeVersion string) error {
+// The source zip is deleted on success. mcVersion pins Minecraft; loader is
+// "forge" (default when empty) or "fabric", and loaderVersion pins that loader.
+// If loaderVersion is empty, only Minecraft is pinned (vanilla).
+func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, loader, loaderVersion string) error {
 	instanceName = strings.TrimSpace(instanceName)
 	if instanceName == "" {
 		return fmt.Errorf("instance name is required")
@@ -91,7 +92,7 @@ func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, forg
 	if err := writeInstanceCfg(instanceDir, instanceName); err != nil {
 		return fmt.Errorf("writing instance.cfg: %w", err)
 	}
-	if err := writeMMCPack(instanceDir, mcVersion, forgeVersion); err != nil {
+	if err := writeMMCPack(instanceDir, mcVersion, loader, loaderVersion); err != nil {
 		return fmt.Errorf("writing mmc-pack.json: %w", err)
 	}
 
@@ -203,9 +204,11 @@ type mmcPack struct {
 	FormatVersion int            `json:"formatVersion"`
 }
 
-// writeMMCPack writes mmc-pack.json pinning Minecraft and (optionally) Forge.
+// writeMMCPack writes mmc-pack.json pinning Minecraft and the chosen mod loader.
+// loader is "forge" (default) or "fabric"; loaderVersion pins that loader. If
+// loaderVersion is empty, only Minecraft is pinned (a vanilla instance).
 // PrismLauncher resolves the exact artifacts from these UIDs/versions.
-func writeMMCPack(instanceDir, mcVersion, forgeVersion string) error {
+func writeMMCPack(instanceDir, mcVersion, loader, loaderVersion string) error {
 	components := []mmcComponent{
 		{
 			UID:        "net.minecraft",
@@ -214,12 +217,38 @@ func writeMMCPack(instanceDir, mcVersion, forgeVersion string) error {
 			CachedName: "Minecraft",
 		},
 	}
-	if strings.TrimSpace(forgeVersion) != "" {
-		components = append(components, mmcComponent{
-			UID:        "net.minecraftforge",
-			Version:    forgeVersion,
-			CachedName: "Forge",
-		})
+
+	loader = strings.ToLower(strings.TrimSpace(loader))
+	if loader == "" {
+		loader = "forge" // default when unspecified
+	}
+	loaderVersion = strings.TrimSpace(loaderVersion)
+
+	if loaderVersion != "" {
+		switch loader {
+		case "fabric":
+			// Fabric needs the intermediary mappings (pinned to the MC version,
+			// as a dependency) plus the Fabric loader itself.
+			components = append(components,
+				mmcComponent{
+					UID:            "net.fabricmc.intermediary",
+					Version:        mcVersion,
+					CachedName:     "Intermediary Mappings",
+					DependencyOnly: true,
+				},
+				mmcComponent{
+					UID:        "net.fabricmc.fabric-loader",
+					Version:    loaderVersion,
+					CachedName: "Fabric Loader",
+				},
+			)
+		default: // "forge"
+			components = append(components, mmcComponent{
+				UID:        "net.minecraftforge",
+				Version:    loaderVersion,
+				CachedName: "Forge",
+			})
+		}
 	}
 
 	pack := mmcPack{
