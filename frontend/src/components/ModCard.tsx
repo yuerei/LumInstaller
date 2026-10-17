@@ -4,6 +4,8 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  Boxes,
+  Tag,
 } from "lucide-react";
 import {
   Card,
@@ -14,11 +16,12 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Stat } from "@/components/Stat";
 import { formatSpeed, formatEta, formatBytes } from "@/lib/format";
 import type { DownloadState } from "@/hooks/useDownloads";
-import { type Mod, isMinecraftPack } from "@/data/catalog";
+import { type Mod, isMinecraftPack, loaderLabel } from "@/data/catalog";
 
 export function ModCard({
   mod,
@@ -49,9 +52,23 @@ export function ModCard({
       </CardHeader>
 
       <CardContent className="flex-1 space-y-3">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <HardDrive className="size-3.5" />
-          {mod.size > 0 ? formatBytes(mod.size) : "Unknown size"}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground mr-0.5">
+            <HardDrive className="size-3.5" />
+            {mod.size > 0 ? formatBytes(mod.size) : "Unknown size"}
+          </span>
+          {mod.version && (
+            <Badge>
+              <Tag className="size-3" />v{mod.version}
+            </Badge>
+          )}
+          {isPack && <Badge tone="brand">{loaderLabel(mod)}</Badge>}
+          {mod.minecraft && (
+            <Badge>
+              <Boxes className="size-3" />
+              {mod.minecraft}
+            </Badge>
+          )}
         </div>
 
         {downloading && (
