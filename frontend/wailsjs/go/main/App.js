@@ -66,12 +66,12 @@ export function PatchPrismAccount(arg1) {
   return window['go']['main']['App']['PatchPrismAccount'](arg1);
 }
 
-export function RecordInstalledMod(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
-  return window['go']['main']['App']['RecordInstalledMod'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
-}
-
 export function ReconcileInstalled() {
   return window['go']['main']['App']['ReconcileInstalled']();
+}
+
+export function RecordInstalledMod(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['RecordInstalledMod'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 export function RelaunchAsAdmin() {

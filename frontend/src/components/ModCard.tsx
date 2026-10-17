@@ -82,12 +82,6 @@ export function ModCard({
               {mod.minecraft}
             </Badge>
           )}
-          {isInstalled && !updateAvailable && !busy && (
-            <Badge tone="brand">
-              <Check className="size-3" />
-              Installed
-            </Badge>
-          )}
           {updateAvailable && !busy && (
             <Badge tone="brand">
               <RefreshCw className="size-3" />

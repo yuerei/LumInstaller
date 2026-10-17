@@ -1,7 +1,16 @@
-import type { ComponentType, ReactNode } from "react";
+import { lazy, type ComponentType, type ReactNode } from "react";
 import { Blocks, Gamepad2 } from "lucide-react";
-import { MinecraftPatch } from "@/components/MinecraftPatch";
-import { SteamPatch } from "@/components/SteamPatch";
+
+// Patch pages are lazy-loaded: they're behind the Patch tab and pull in the
+// dialog/base-ui weight, so they shouldn't be in the initial bundle.
+const MinecraftPatch = lazy(() =>
+  import("@/components/MinecraftPatch").then((m) => ({
+    default: m.MinecraftPatch,
+  })),
+);
+const SteamPatch = lazy(() =>
+  import("@/components/SteamPatch").then((m) => ({ default: m.SteamPatch })),
+);
 
 export interface PatchDef {
   /** Stable id used for routing/selection. */
