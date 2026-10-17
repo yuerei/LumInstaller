@@ -28,7 +28,16 @@ function App() {
   );
 
   const { folders, setFolder } = useGameFolders(gameList);
-  const { version, update, dismiss } = useUpdate();
+  const {
+    version,
+    update,
+    dismiss,
+    status: updateStatus,
+    progress: updateProgress,
+    error: updateError,
+    applyUpdate,
+    canSelfUpdate,
+  } = useUpdate();
 
   const activePatch = useMemo(
     () => patches.find((p) => p.id === selectedPatch) ?? null,
@@ -55,7 +64,17 @@ function App() {
       <Sidebar active={active} version={version} onNavigate={navigate} />
 
       <main className="flex-1 overflow-y-auto">
-        {update && <UpdateBanner update={update} onDismiss={dismiss} />}
+        {update && (
+          <UpdateBanner
+            update={update}
+            status={updateStatus}
+            progress={updateProgress}
+            error={updateError}
+            canSelfUpdate={canSelfUpdate}
+            onUpdate={applyUpdate}
+            onDismiss={dismiss}
+          />
+        )}
 
         <header className="border-b border-border px-8 py-6">
           <h2 className="text-2xl font-semibold">{header.title}</h2>

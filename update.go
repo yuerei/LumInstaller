@@ -11,7 +11,7 @@ import (
 
 // AppVersion is the current application version (semver, no leading "v").
 // Keep this in sync with the version shown in the UI and your release tags.
-const AppVersion = "2.2.1"
+const AppVersion = "2.3.0"
 
 // releasesAPIURL is the GitHub API endpoint for the latest published release
 // of the app repository.
@@ -29,15 +29,26 @@ type UpdateInfo struct {
 	URL string `json:"url"`
 	// Notes is the release body/changelog (may be empty).
 	Notes string `json:"notes"`
+	// ExeURL is the direct download URL of the new .exe asset (empty if none).
+	ExeURL string `json:"exeUrl"`
+	// Sha256URL is the download URL of the ".exe.sha256" checksum asset.
+	Sha256URL string `json:"sha256Url"`
+}
+
+// githubAsset is one release asset.
+type githubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
 // githubRelease is the subset of the GitHub release payload we care about.
 type githubRelease struct {
-	TagName    string `json:"tag_name"`
-	HTMLURL    string `json:"html_url"`
-	Body       string `json:"body"`
-	Draft      bool   `json:"draft"`
-	Prerelease bool   `json:"prerelease"`
+	TagName    string        `json:"tag_name"`
+	HTMLURL    string        `json:"html_url"`
+	Body       string        `json:"body"`
+	Draft      bool          `json:"draft"`
+	Prerelease bool          `json:"prerelease"`
+	Assets     []githubAsset `json:"assets"`
 }
 
 // CheckForUpdate queries GitHub for the latest release and compares it to the
@@ -84,6 +95,16 @@ func (a *App) CheckForUpdate() (UpdateInfo, error) {
 	info.URL = rel.HTMLURL
 	info.Notes = rel.Body
 	info.Available = compareSemver(latest, AppVersion) > 0
+
+	// Locate the .exe and its .sha256 sidecar among the release assets.
+	for _, asset := range rel.Assets {
+		name := strings.ToLower(asset.Name)
+		if strings.HasSuffix(name, ".exe.sha256") {
+			info.Sha256URL = asset.BrowserDownloadURL
+		} else if strings.HasSuffix(name, ".exe") {
+			info.ExeURL = asset.BrowserDownloadURL
+		}
+	}
 	return info, nil
 }
 

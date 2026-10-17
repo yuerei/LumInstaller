@@ -34,6 +34,8 @@ export namespace main {
 	    latest: string;
 	    url: string;
 	    notes: string;
+	    exeUrl: string;
+	    sha256Url: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
@@ -46,6 +48,8 @@ export namespace main {
 	        this.latest = source["latest"];
 	        this.url = source["url"];
 	        this.notes = source["notes"];
+	        this.exeUrl = source["exeUrl"];
+	        this.sha256Url = source["sha256Url"];
 	    }
 	}
 
