@@ -8,6 +8,8 @@ export function CheckForUpdate():Promise<main.UpdateInfo>;
 
 export function ChooseFolder():Promise<string>;
 
+export function ClearInstalled():Promise<void>;
+
 export function CloseSteam():Promise<void>;
 
 export function DefaultGameFolder(arg1:string):Promise<string>;
@@ -18,7 +20,11 @@ export function Download(arg1:string,arg2:string,arg3:string,arg4:string):Promis
 
 export function FetchCatalog():Promise<string>;
 
-export function InstallMinecraftPack(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<void>;
+export function GetInstalledMods():Promise<Array<main.InstalledMod>>;
+
+export function InstallMinecraftPack(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<string>;
+
+export function InstanceExists(arg1:string,arg2:string):Promise<boolean>;
 
 export function IsElevated():Promise<boolean>;
 
@@ -28,6 +34,12 @@ export function IsSteamRunning():Promise<boolean>;
 
 export function PatchPrismAccount(arg1:string):Promise<void>;
 
+export function RecordInstalledMod(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string):Promise<void>;
+
+export function ReconcileInstalled():Promise<Array<main.InstalledMod>>;
+
 export function RelaunchAsAdmin():Promise<void>;
+
+export function RemoveInstalled(arg1:string):Promise<void>;
 
 export function Version():Promise<string>;

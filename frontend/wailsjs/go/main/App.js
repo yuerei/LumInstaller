@@ -14,6 +14,10 @@ export function ChooseFolder() {
   return window['go']['main']['App']['ChooseFolder']();
 }
 
+export function ClearInstalled() {
+  return window['go']['main']['App']['ClearInstalled']();
+}
+
 export function CloseSteam() {
   return window['go']['main']['App']['CloseSteam']();
 }
@@ -34,8 +38,16 @@ export function FetchCatalog() {
   return window['go']['main']['App']['FetchCatalog']();
 }
 
+export function GetInstalledMods() {
+  return window['go']['main']['App']['GetInstalledMods']();
+}
+
 export function InstallMinecraftPack(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['InstallMinecraftPack'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function InstanceExists(arg1, arg2) {
+  return window['go']['main']['App']['InstanceExists'](arg1, arg2);
 }
 
 export function IsElevated() {
@@ -54,8 +66,20 @@ export function PatchPrismAccount(arg1) {
   return window['go']['main']['App']['PatchPrismAccount'](arg1);
 }
 
+export function RecordInstalledMod(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['RecordInstalledMod'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+}
+
+export function ReconcileInstalled() {
+  return window['go']['main']['App']['ReconcileInstalled']();
+}
+
 export function RelaunchAsAdmin() {
   return window['go']['main']['App']['RelaunchAsAdmin']();
+}
+
+export function RemoveInstalled(arg1) {
+  return window['go']['main']['App']['RemoveInstalled'](arg1);
 }
 
 export function Version() {

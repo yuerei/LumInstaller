@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Boxes,
   Tag,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -21,26 +22,38 @@ import { Progress } from "@/components/ui/progress";
 import { Stat } from "@/components/Stat";
 import { formatSpeed, formatEta, formatBytes } from "@/lib/format";
 import type { DownloadState } from "@/hooks/useDownloads";
+import type { InstalledMod } from "@/hooks/useInstalled";
 import { type Mod, isMinecraftPack, loaderLabel } from "@/data/catalog";
 
 export function ModCard({
   mod,
   state,
+  installed,
   folderSet,
   onInstall,
 }: {
   mod: Mod;
   state?: DownloadState;
+  installed?: InstalledMod;
   folderSet: boolean;
   onInstall: () => void;
 }) {
   const status = state?.status ?? "idle";
   const downloading = status === "downloading";
   const extracting = status === "extracting";
-  const done = status === "done";
+  const sessionDone = status === "done";
   const error = status === "error";
   const busy = downloading || extracting;
   const isPack = isMinecraftPack(mod);
+
+  // Persisted install state (survives restarts). An update is available when a
+  // record exists but its version differs from the catalog's current version.
+  const isInstalled = Boolean(installed) || sessionDone;
+  const updateAvailable =
+    Boolean(installed) &&
+    Boolean(mod.version) &&
+    installed!.version !== mod.version &&
+    !sessionDone;
 
   return (
     <Card className="flex flex-col hover:ring-brand/40 transition-all">
@@ -67,6 +80,18 @@ export function ModCard({
             <Badge>
               <Boxes className="size-3" />
               {mod.minecraft}
+            </Badge>
+          )}
+          {isInstalled && !updateAvailable && !busy && (
+            <Badge tone="brand">
+              <Check className="size-3" />
+              Installed
+            </Badge>
+          )}
+          {updateAvailable && !busy && (
+            <Badge tone="brand">
+              <RefreshCw className="size-3" />
+              Update
             </Badge>
           )}
         </div>
@@ -102,10 +127,16 @@ export function ModCard({
           </div>
         )}
 
-        {done && (
+        {sessionDone && (
           <p className="flex items-center gap-1.5 text-xs text-brand">
             <Check className="size-3.5" />
             {isPack ? "Instance ready" : "Download complete"}
+          </p>
+        )}
+
+        {updateAvailable && (
+          <p className="text-xs text-muted-foreground">
+            Installed v{installed!.version || "?"} — v{mod.version} available.
           </p>
         )}
 
@@ -127,8 +158,8 @@ export function ModCard({
         <Button
           className="w-full"
           size="sm"
-          disabled={busy || done || !folderSet}
-          variant={done ? "outline" : "brand"}
+          disabled={busy || !folderSet || (isInstalled && !updateAvailable)}
+          variant={isInstalled && !updateAvailable ? "outline" : "brand"}
           onClick={onInstall}
         >
           {downloading ? (
@@ -139,7 +170,11 @@ export function ModCard({
             <>
               <Loader2 className="size-4 mr-1 animate-spin" /> Installing…
             </>
-          ) : done ? (
+          ) : updateAvailable ? (
+            <>
+              <RefreshCw className="size-4 mr-1" /> Update
+            </>
+          ) : isInstalled ? (
             <>
               <Check className="size-4 mr-1 text-brand" /> Installed
             </>

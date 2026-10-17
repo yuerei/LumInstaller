@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
-import { Download, InstallMinecraftPack } from "../../wailsjs/go/main/App";
+import {
+  Download,
+  InstallMinecraftPack,
+  RecordInstalledMod,
+} from "../../wailsjs/go/main/App";
 import { type Mod, isMinecraftPack } from "@/data/catalog";
+import type { InstalledMod } from "@/hooks/useInstalled";
 
 export interface DownloadState {
   status: "idle" | "downloading" | "extracting" | "done" | "error";
@@ -91,52 +96,97 @@ export function useDownloads() {
     };
   }, []);
 
-  const start = useCallback(async (mod: Mod, destFolder: string) => {
-    setDownloads((prev) => ({
-      ...prev,
-      [mod.id]: { ...initial, status: "downloading" },
-    }));
-    try {
-      const zipPath = await Download(mod.id, mod.url, destFolder, mod.filename);
+  const start = useCallback(
+    async (
+      mod: Mod,
+      destFolder: string,
+      onInstalled?: (rec: InstalledMod) => void,
+    ) => {
+      setDownloads((prev) => ({
+        ...prev,
+        [mod.id]: { ...initial, status: "downloading" },
+      }));
+      try {
+        const zipPath = await Download(
+          mod.id,
+          mod.url,
+          destFolder,
+          mod.filename,
+        );
 
-      // Minecraft modpacks: extract into a PrismLauncher instance.
-      if (isMinecraftPack(mod)) {
+        let installPath = destFolder;
+        const loader = mod.loader === "fabric" ? "fabric" : "forge";
+
+        // Minecraft modpacks: extract into a PrismLauncher instance.
+        if (isMinecraftPack(mod)) {
+          setDownloads((prev) => ({
+            ...prev,
+            [mod.id]: {
+              ...(prev[mod.id] ?? initial),
+              status: "extracting",
+              message: "Preparing instance…",
+            },
+          }));
+          const loaderVersion =
+            loader === "fabric" ? mod.fabric || "" : mod.forge || "";
+          installPath = await InstallMinecraftPack(
+            mod.id,
+            zipPath,
+            mod.instanceName || mod.name,
+            mod.minecraft || "",
+            loader,
+            loaderVersion,
+          );
+        }
+
+        // Persist the install so it's remembered across restarts.
+        try {
+          await RecordInstalledMod(
+            mod.id,
+            mod.name,
+            mod.game,
+            mod.version || "",
+            isMinecraftPack(mod) ? loader : "",
+            mod.minecraft || "",
+            mod.instanceName || "",
+            installPath,
+          );
+          onInstalled?.({
+            id: mod.id,
+            name: mod.name,
+            game: mod.game,
+            version: mod.version || "",
+            loader: isMinecraftPack(mod) ? loader : "",
+            minecraft: mod.minecraft || "",
+            instanceName: mod.instanceName || "",
+            path: installPath,
+            installedAt: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error("record install failed", e);
+        }
+
         setDownloads((prev) => ({
           ...prev,
           [mod.id]: {
             ...(prev[mod.id] ?? initial),
-            status: "extracting",
-            message: "Preparing instance…",
+            status: "done",
+            percent: 100,
           },
         }));
-        const loader = mod.loader === "fabric" ? "fabric" : "forge";
-        const loaderVersion =
-          loader === "fabric" ? mod.fabric || "" : mod.forge || "";
-        await InstallMinecraftPack(
-          mod.id,
-          zipPath,
-          mod.instanceName || mod.name,
-          mod.minecraft || "",
-          loader,
-          loaderVersion,
-        );
+      } catch (e) {
+        setDownloads((prev) => ({
+          ...prev,
+          [mod.id]: {
+            ...(prev[mod.id] ?? initial),
+            status: "error",
+            error: String(e),
+          },
+        }));
       }
-
-      setDownloads((prev) => ({
-        ...prev,
-        [mod.id]: { ...(prev[mod.id] ?? initial), status: "done", percent: 100 },
-      }));
-    } catch (e) {
-      setDownloads((prev) => ({
-        ...prev,
-        [mod.id]: {
-          ...(prev[mod.id] ?? initial),
-          status: "error",
-          error: String(e),
-        },
-      }));
-    }
-  }, []);
+    },
+    [],
+  );
 
   return { downloads, start };
 }

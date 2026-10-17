@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Settings,
   Gamepad2,
@@ -15,14 +15,26 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { PatchCard } from "@/components/PatchCard";
 import { Button } from "@/components/ui/button";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 import { useGameFolders } from "@/hooks/useGameFolders";
 import { useDownloads } from "@/hooks/useDownloads";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useUpdate } from "@/hooks/useUpdate";
+import { useInstalled } from "@/hooks/useInstalled";
 
 import { patches } from "@/data/patches";
-import type { Mod } from "@/data/catalog";
+import { type Mod, isMinecraftPack } from "@/data/catalog";
+import { InstanceExists } from "../wailsjs/go/main/App";
 
 function App() {
   const [active, setActive] = useState<"catalog" | "patch" | "settings">(
@@ -51,6 +63,40 @@ function App() {
   const { folders, setFolder } = useGameFolders(gameList);
   const { downloads, start } = useDownloads();
   const { version, update, dismiss } = useUpdate();
+  const { installed, markInstalled } = useInstalled();
+
+  // Overwrite-confirmation dialog state: holds the mod awaiting confirmation.
+  const [confirmMod, setConfirmMod] = useState<Mod | null>(null);
+
+  // Run the actual install for a mod into its game's folder, recording it.
+  const runInstall = useCallback(
+    (mod: Mod) => start(mod, folders[mod.game], markInstalled),
+    [start, folders, markInstalled],
+  );
+
+  // Install entrypoint: for Minecraft modpacks, warn first if the instance
+  // folder already exists so the user doesn't accidentally overwrite it.
+  const installMod = useCallback(
+    async (mod: Mod) => {
+      const dest = folders[mod.game];
+      if (dest && isMinecraftPack(mod)) {
+        try {
+          const exists = await InstanceExists(
+            dest,
+            mod.instanceName || mod.name,
+          );
+          if (exists) {
+            setConfirmMod(mod);
+            return;
+          }
+        } catch (e) {
+          console.error("instance check failed", e);
+        }
+      }
+      runInstall(mod);
+    },
+    [folders, runInstall],
+  );
 
   const activePatch = useMemo(
     () => patches.find((p) => p.id === selectedPatch) ?? null,
@@ -223,8 +269,9 @@ function App() {
                       key={mod.id}
                       mod={mod}
                       state={downloads[mod.id]}
+                      installed={installed[mod.id]}
                       folderSet={Boolean(folders[mod.game])}
-                      onInstall={() => start(mod, folders[mod.game])}
+                      onInstall={() => installMod(mod)}
                     />
                   ))}
                 </div>
@@ -267,6 +314,41 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* Overwrite confirmation for existing Minecraft instances */}
+      <AlertDialog
+        open={confirmMod !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmMod(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Instance already exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              An instance named{" "}
+              <span className="font-medium text-foreground">
+                {confirmMod?.instanceName || confirmMod?.name}
+              </span>{" "}
+              already exists in this folder. Reinstalling will overwrite its
+              files — worlds and saves inside the instance may be lost. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmMod(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmMod) runInstall(confirmMod);
+                setConfirmMod(null);
+              }}
+            >
+              Overwrite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

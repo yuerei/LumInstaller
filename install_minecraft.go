@@ -60,17 +60,18 @@ func isServerOnly(name string) bool {
 //
 // The source zip is deleted on success. mcVersion pins Minecraft; loader is
 // "forge" (default when empty) or "fabric", and loaderVersion pins that loader.
-// If loaderVersion is empty, only Minecraft is pinned (vanilla).
-func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, loader, loaderVersion string) error {
+// If loaderVersion is empty, only Minecraft is pinned (vanilla). On success it
+// returns the created instance directory.
+func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, loader, loaderVersion string) (string, error) {
 	instanceName = strings.TrimSpace(instanceName)
 	if instanceName == "" {
-		return fmt.Errorf("instance name is required")
+		return "", fmt.Errorf("instance name is required")
 	}
 	if strings.ContainsAny(instanceName, `/\:*?"<>|`) {
-		return fmt.Errorf("instance name contains invalid characters")
+		return "", fmt.Errorf("instance name contains invalid characters")
 	}
 	if strings.TrimSpace(mcVersion) == "" {
-		return fmt.Errorf("minecraft version is required")
+		return "", fmt.Errorf("minecraft version is required")
 	}
 
 	// The zip was downloaded into the user's chosen Minecraft folder, which is
@@ -82,18 +83,18 @@ func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, load
 	instanceDir := filepath.Join(instancesRoot, instanceName)
 	mcDir := filepath.Join(instanceDir, ".minecraft")
 	if err := os.MkdirAll(mcDir, 0o755); err != nil {
-		return fmt.Errorf("cannot create instance folder: %w", err)
+		return "", fmt.Errorf("cannot create instance folder: %w", err)
 	}
 
 	if err := a.extractZip(modID, zipPath, mcDir); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := writeInstanceCfg(instanceDir, instanceName); err != nil {
-		return fmt.Errorf("writing instance.cfg: %w", err)
+		return "", fmt.Errorf("writing instance.cfg: %w", err)
 	}
 	if err := writeMMCPack(instanceDir, mcVersion, loader, loaderVersion); err != nil {
-		return fmt.Errorf("writing mmc-pack.json: %w", err)
+		return "", fmt.Errorf("writing mmc-pack.json: %w", err)
 	}
 
 	// Clean up the source zip now that extraction succeeded.
@@ -103,7 +104,7 @@ func (a *App) InstallMinecraftPack(modID, zipPath, instanceName, mcVersion, load
 	}
 
 	a.emitInstall(modID, 1, 1, true, "Instance ready")
-	return nil
+	return instanceDir, nil
 }
 
 // extractZip safely unpacks src into destDir, guarding against zip-slip and
